@@ -1,0 +1,39 @@
+services:
+
+  # Redis - Sliding Window State Store
+  redis:
+    image: redis:7-alpine
+    container_name: microapi-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Backend - Mock Microservices (User, Product, Order)
+  backend:
+    build: ./backend
+    container_name: microapi-backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # Gateway - API Security Gateway (Reverse Proxy)
+  gateway:
+    build: ./gateway
+    container_name: microapi-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - REDIS_URL=redis://redis:6379
+      - JSONL_DIR=/app/data
+    depends_on:
+      - redis
+      - backend
+    volumes:
+      - ./data:/app/data    # Bind mount: JSONL dataset accessible from host
+    restart: unless-stopped
+
+volumes:
+  redis_data:
