@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 node_modules/
 .env
+
+src/ml_pipeline/venv/
+
+src/ml_pipeline/sklearn_portable/
