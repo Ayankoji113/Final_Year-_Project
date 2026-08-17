@@ -28,11 +28,13 @@ services:
       - BACKEND_URL=http://backend:8000
       - REDIS_URL=redis://redis:6379
       - JSONL_DIR=/app/data
+      - ML_ENFORCEMENT_MODE=true
     depends_on:
       - redis
       - backend
     volumes:
       - ./data:/app/data    # Bind mount: JSONL dataset accessible from host
+      - ./ml_pipeline/models:/app/models
     restart: unless-stopped
 
 volumes:
