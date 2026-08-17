@@ -77,12 +77,11 @@ _rf              = None
 _threshold_meta  = None   # {'best_source': 'hist_gradient_boost', 'best_threshold': 0.715}
 
 # Feature column names (must match train.py exactly)
-NUMERICAL_COLS   = ['request_body_size', 'request_duration_ms', 'sliding_window_count']
+NUMERICAL_COLS   = ['request_body_size', 'sliding_window_count']
 CATEGORICAL_COLS = ['http_method', 'http_path']
 ENG_NUMERICAL    = NUMERICAL_COLS + [
-    'log_body_size', 'log_duration', 'log_window',
-    'body_per_ms', 'window_per_ms',
-    'is_large_body', 'is_high_rate', 'is_slow_req',
+    'log_body_size', 'log_window',
+    'is_large_body', 'is_high_rate',
     'path_has_admin', 'path_has_sqli', 'path_has_traverse',
     'path_depth', 'is_post_large',
 ]
@@ -91,26 +90,21 @@ def _engineer(row: dict) -> pd.DataFrame:
     """Apply same feature engineering as train.py"""
     df = pd.DataFrame([{
         'request_body_size':    float(row.get('request_body_size', 0)),
-        'request_duration_ms':  float(row.get('request_duration_ms', 0)),
         'sliding_window_count': float(row.get('sliding_window_count', 0)),
         'http_method':          str(row.get('http_method', 'GET')),
         'http_path':            str(row.get('http_path', '/')),
     }])
 
     df['log_body_size']     = np.log1p(df['request_body_size'])
-    df['log_duration']      = np.log1p(df['request_duration_ms'])
     df['log_window']        = np.log1p(df['sliding_window_count'])
-    df['body_per_ms']       = df['request_body_size'] / (df['request_duration_ms'] + 1)
-    df['window_per_ms']     = df['sliding_window_count'] / (df['request_duration_ms'] + 1)
     df['is_large_body']     = (df['request_body_size'] > 1000).astype(float)
     df['is_high_rate']      = (df['sliding_window_count'] > 15).astype(float)
-    df['is_slow_req']       = (df['request_duration_ms'] > 500).astype(float)
-    path = df['http_path'].str.lower()
+    path = df['http_path'].astype(str).str.lower()
     df['path_has_admin']    = path.str.contains('admin|root|config', regex=True).astype(float)
     df['path_has_sqli']     = path.str.contains(r"'|--|union|select|drop", regex=True).astype(float)
     df['path_has_traverse'] = path.str.contains(r'\.\./|etc/passwd|\.env|\.git', regex=True).astype(float)
-    df['path_depth']        = df['http_path'].str.count('/').clip(0, 10).astype(float)
-    df['is_post_large']     = ((df['http_method'].str.upper() == 'POST') &
+    df['path_depth']        = df['http_path'].astype(str).str.count('/').clip(0, 10).astype(float)
+    df['is_post_large']     = ((df['http_method'].astype(str).str.upper() == 'POST') &
                                (df['request_body_size'] > 500)).astype(float)
     return df
 
@@ -347,14 +341,15 @@ async def gateway_proxy(request: Request, path: str):
     sliding_window_count = await get_sliding_window_count(client_ip)
 
     # ── Step 2: ML INFERENCE (before forwarding) ─────────────────────
-    pre_duration_ms = (time.time() - start_time) * 1000   # time so far
+    full_path = request.url.path
+    if request.url.query:
+        full_path += f"?{request.url.query}"
 
     raw_features = {
         'request_body_size':    len(request_body),
-        'request_duration_ms':  pre_duration_ms,           # pre-response estimate
         'sliding_window_count': sliding_window_count,
         'http_method':          request.method,
-        'http_path':            request.url.path,
+        'http_path':            full_path,
     }
 
     ml_result = predict(raw_features)
@@ -372,7 +367,7 @@ async def gateway_proxy(request: Request, path: str):
             "timestamp":            time.time(),
             "client_ip":            client_ip,
             "http_method":          request.method,
-            "http_path":            request.url.path,
+            "http_path":            full_path,
             "request_body_size":    len(request_body),
             "response_status":      403,
             "request_duration_ms":  round(duration_ms, 2),
@@ -390,7 +385,7 @@ async def gateway_proxy(request: Request, path: str):
                 "error":   "Request blocked by MicroAPI Guard",
                 "reason":  "Anomaly detected by ML security engine",
                 "score":   ml_result['score'],
-                "request": f"{request.method} {request.url.path}",
+                "request": f"{request.method} {full_path}",
             }),
             status_code=403,
             media_type="application/json",
@@ -426,7 +421,7 @@ async def gateway_proxy(request: Request, path: str):
         "timestamp":            time.time(),
         "client_ip":            client_ip,
         "http_method":          request.method,
-        "http_path":            request.url.path,
+        "http_path":            full_path,
         "request_body_size":    len(request_body),
         "response_status":      response.status_code,
         "request_duration_ms":  round(duration_ms, 2),

@@ -35,7 +35,7 @@ DATA_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dat
 MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-NUMERICAL_COLS   = ['request_body_size', 'request_duration_ms', 'sliding_window_count']
+NUMERICAL_COLS   = ['request_body_size', 'sliding_window_count']
 CATEGORICAL_COLS = ['http_method', 'http_path']
 LABEL_COL = 'label'
 RANDOM_SEED = 42
@@ -117,6 +117,8 @@ def stratified_split(X, y, ratio=0.2, seed=42):
         te.extend(idx[:cut]); tr.extend(idx[cut:])
     rng.shuffle(tr); rng.shuffle(te)
     ya = list(y)
+    if isinstance(X, pd.DataFrame):
+        return X.iloc[tr].copy(), X.iloc[te].copy(), [ya[i] for i in tr], [ya[i] for i in te]
     return X[tr], X[te], [ya[i] for i in tr], [ya[i] for i in te]
 
 def minmax(arr, ref=None):
@@ -156,25 +158,20 @@ def report(y_true, y_pred):
 def engineer_features(df):
     df = df.copy()
     df['log_body_size']    = np.log1p(df['request_body_size'])
-    df['log_duration']     = np.log1p(df['request_duration_ms'])
     df['log_window']       = np.log1p(df['sliding_window_count'])
-    df['body_per_ms']      = df['request_body_size'] / (df['request_duration_ms'] + 1)
-    df['window_per_ms']    = df['sliding_window_count'] / (df['request_duration_ms'] + 1)
     df['is_large_body']    = (df['request_body_size'] > 1000).astype(float)
     df['is_high_rate']     = (df['sliding_window_count'] > 15).astype(float)
-    df['is_slow_req']      = (df['request_duration_ms'] > 500).astype(float)
-    path = df['http_path'].str.lower()
+    path = df['http_path'].astype(str).str.lower()
     df['path_has_admin']   = path.str.contains('admin|root|config', regex=True).astype(float)
     df['path_has_sqli']    = path.str.contains(r"'|--|union|select|drop", regex=True).astype(float)
     df['path_has_traverse']= path.str.contains(r'\.\./|etc/passwd|\.env|\.git', regex=True).astype(float)
-    df['path_depth']       = df['http_path'].str.count('/').clip(0, 10).astype(float)
-    df['is_post_large']    = ((df['http_method'].str.upper()=='POST') & (df['request_body_size']>500)).astype(float)
+    df['path_depth']       = df['http_path'].astype(str).str.count('/').clip(0, 10).astype(float)
+    df['is_post_large']    = ((df['http_method'].astype(str).str.upper()=='POST') & (df['request_body_size']>500)).astype(float)
     return df
 
 ENG_NUMERICAL = NUMERICAL_COLS + [
-    'log_body_size','log_duration','log_window',
-    'body_per_ms','window_per_ms',
-    'is_large_body','is_high_rate','is_slow_req',
+    'log_body_size','log_window',
+    'is_large_body','is_high_rate',
     'path_has_admin','path_has_sqli','path_has_traverse',
     'path_depth','is_post_large',
 ]
@@ -194,28 +191,30 @@ if __name__ == '__main__':
     y_all  = np.array([1 if l=='attack' else 0 for l in labels])
     print(f"      {len(rows):,} records | {dict(Counter(labels))}")
 
-    # 2. Feature Engineering + Preprocess
-    print("\n[2/7] Feature engineering + preprocessing...")
+    # 2. Feature Engineering
+    print("\n[2/7] Feature engineering...")
     raw_df = pd.DataFrame({
         'request_body_size':    [float(r.get('request_body_size',0))    for r in rows],
-        'request_duration_ms':  [float(r.get('request_duration_ms',0))  for r in rows],
         'sliding_window_count': [float(r.get('sliding_window_count',0)) for r in rows],
         'http_method':          [r.get('http_method','GET')              for r in rows],
         'http_path':            [r.get('http_path','/')                  for r in rows],
     })
     df_eng = engineer_features(raw_df)
+
+    # 3. Splitting + Preprocess
+    print("\n[3/7] Splitting (60/20/20 stratified) & Preprocessing (No Leakage)...")
+    df_tr, df_tmp, y_tr, y_tmp = stratified_split(df_eng, y_all, ratio=0.4, seed=42)
+    df_val, df_te, y_val, y_te = stratified_split(df_tmp,  y_tmp, ratio=0.5, seed=42)
+    
     pre = ColumnTransformer([
         ('num', StandardScaler(),                                            ENG_NUMERICAL),
         ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), CATEGORICAL_COLS),
     ])
-    X_all = pre.fit_transform(df_eng)
+    X_tr = pre.fit_transform(df_tr)
+    X_val = pre.transform(df_val)
+    X_te = pre.transform(df_te)
     joblib.dump(pre, os.path.join(MODELS_DIR, 'preprocessor.pkl'))
-    print(f"      Feature matrix: {X_all.shape} | Saved preprocessor.pkl")
-
-    # 3. Split
-    print("\n[3/7] Splitting (60/20/20 stratified)...")
-    X_tr, X_tmp, y_tr, y_tmp = stratified_split(X_all, y_all, ratio=0.4, seed=42)
-    X_val, X_te, y_val, y_te = stratified_split(X_tmp,  y_tmp, ratio=0.5, seed=42)
+    print(f"      Train matrix: {X_tr.shape} | Saved preprocessor.pkl")
     X_tr_n  = X_tr[np.array(y_tr)==0]
     y_tr_a  = np.array(y_tr)
     print(f"      Train: {X_tr.shape[0]:,} | Val: {X_val.shape[0]:,} | Test: {X_te.shape[0]:,}")
