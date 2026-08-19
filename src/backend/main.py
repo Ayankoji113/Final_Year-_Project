@@ -169,6 +169,67 @@ async def get_order(order_id: str):
     raise HTTPException(status_code=404, detail="Order not found")
 
 
+# ======================== SEARCH / CONTENT SERVICE ========================
+# Added so generated traffic exercises a realistic variety of paths, query
+# shapes and body sizes. The gateway is backend-agnostic and does not know
+# these routes exist -- they only make the traffic distribution realistic.
+
+COMMENTS_DB = []
+
+
+@app.get("/api/search")
+async def search(q: str = "", page: int = 1, limit: int = 20, category: str = ""):
+    hits = [p for p in PRODUCTS_DB
+            if q.lower() in p["name"].lower()
+            and (not category or p["category"].lower() == category.lower())]
+    start = max(0, (page - 1) * limit)
+    return {"status": "success", "query": q, "page": page,
+            "count": len(hits), "results": hits[start:start + limit]}
+
+
+@app.get("/api/users/{user_id}")
+async def get_user(user_id: int):
+    names = list(USERS_DB.keys())
+    if 1 <= user_id <= len(names):
+        u = names[user_id - 1]
+        return {"status": "success",
+                "user": {"id": user_id, "username": u, "name": USERS_DB[u]["name"]}}
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+class CommentRequest(BaseModel):
+    text: str
+    product_id: int = 0
+    rating: int = 5
+
+
+@app.post("/api/comments")
+async def add_comment(req: CommentRequest):
+    c = {"id": len(COMMENTS_DB) + 1, "text": req.text[:5000],
+         "product_id": req.product_id, "rating": req.rating,
+         "created_at": datetime.now().isoformat()}
+    COMMENTS_DB.append(c)
+    return {"status": "success", "comment": c}
+
+
+@app.get("/api/comments")
+async def list_comments(page: int = 1, limit: int = 20):
+    start = max(0, (page - 1) * limit)
+    return {"status": "success", "count": len(COMMENTS_DB),
+            "comments": COMMENTS_DB[start:start + limit]}
+
+
+@app.put("/api/users/{user_id}")
+async def update_user(user_id: int, req: dict):
+    return {"status": "success", "message": f"User {user_id} updated",
+            "fields": list(req.keys())}
+
+
+@app.delete("/api/orders/{order_id}")
+async def cancel_order(order_id: str):
+    return {"status": "success", "message": f"Order {order_id} cancelled"}
+
+
 # ======================== HEALTH CHECK ========================
 
 @app.get("/health")

@@ -13,6 +13,7 @@ Usage:
 """
 import urllib.request
 import urllib.error
+import urllib.parse
 import json
 import random
 import time
@@ -23,33 +24,30 @@ import os
 # Fix Windows encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-GATEWAY_URL = "http://localhost:5000"
+GATEWAY_URL = os.getenv("GATEWAY_URL", "http://127.0.0.1:5000")
 LOG_FILE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'data', 'test_results.log')
 )
 
 # ── NORMAL ENDPOINTS ────────────────────────────────────────────────
 NORMAL_ENDPOINTS = [
-    ("GET",  "/api/products",        None),
-    ("GET",  "/api/products/1",      None),
-    ("GET",  "/api/products/2",      None),
-    ("GET",  "/api/products/3",      None),
-    ("GET",  "/api/products/4",      None),
-    ("GET",  "/api/products/5",      None),
-    ("GET",  "/api/orders",          None),
-    ("GET",  "/api/users/profile",   None),
-    ("GET",  "/health",              None),
-    ("POST", "/api/users/login",     {"username": "admin", "password": "pass123"}),
-    ("POST", "/api/users/login",     {"username": "john",  "password": "john456"}),
-    ("POST", "/api/users/login",     {"username": "jane",  "password": "jane789"}),
-    ("POST", "/api/orders",          {"product_id": 1, "quantity": 1}),
-    ("POST", "/api/orders",          {"product_id": 2, "quantity": 3}),
-    ("POST", "/api/orders",          {"product_id": 3, "quantity": 2}),
-    ("POST", "/api/orders",          {"product_id": 4, "quantity": 1}),
-    ("POST", "/api/orders",          {"product_id": 5, "quantity": 1}),
-    ("GET",  "/api/products",        None),
-    ("GET",  "/api/orders",          None),
-    ("GET",  "/api/users/profile",   None),
+    ("GET",  "/api/users",              None, "List Users"),
+    ("GET",  "/api/users/profile",      None, "Get Profile"),
+    ("GET",  "/api/products",           None, "List Products"),
+    ("GET",  "/api/products/1",         None, "Get Product"),
+    ("GET",  "/api/products/2",         None, "Get Product"),
+    ("GET",  "/api/products/3",         None, "Get Product"),
+    ("GET",  "/api/products/4",         None, "Get Product"),
+    ("GET",  "/api/products/5",         None, "Get Product"),
+    ("GET",  "/api/orders",             None, "List Orders"),
+    ("GET",  "/health",                 None, "Healthcheck"),
+    ("POST", "/api/users/login",        {"username": "user", "password": "pwd"}, "Login"),
+    ("POST", "/api/orders",             {"product_id": 1, "qty": 1}, "Create Order"),
+    # Edge Cases: Suspicious but normal
+    ("GET",  "/api/search?q=admin",     None, "Normal Search"),
+    ("GET",  "/api/search?q=100%",      None, "Normal Search"),
+    ("GET",  "/api/products?category=home%20appliances", None, "Normal Search URL Encoded"),
+    ("POST", "/api/comments",           {"text": "A" * 1500, "user": 1}, "Long Normal Payload"),
 ]
 
 # ── ATTACK ENDPOINTS ────────────────────────────────────────────────
@@ -59,12 +57,19 @@ ATTACK_ENDPOINTS = [
     ("GET",  "/api/search?q='; DROP TABLE users;--",     None,  "SQL Injection"),
     ("POST", "/api/users/login", {"username":"admin'--","password":"x"},  "SQL Injection"),
     ("GET",  "/api/products?id=1 UNION SELECT * FROM users--", None, "SQL Injection"),
+    # Edge Case: Stealthy / Obfuscated SQLi
+    ("GET",  "/api/users?id=1%27%20OR%20%271%27%3D%271", None, "Stealthy SQLi"),
+    ("GET",  "/api/products?id=2-1",                     None, "Stealthy SQLi"),
+    
     # Path Traversal
     ("GET",  "/api/../../../etc/passwd",                  None,  "Path Traversal"),
     ("GET",  "/api/../../etc/shadow",                     None,  "Path Traversal"),
     ("GET",  "/api/users/../../admin",                    None,  "Path Traversal"),
     ("GET",  "/../../../windows/system32/config/sam",     None,  "Path Traversal"),
     ("GET",  "/api/../../../var/log/syslog",              None,  "Path Traversal"),
+    # Edge Case: Encoded Path Traversal
+    ("GET",  "/api/users/%2e%2e/%2e%2e/etc/passwd",       None, "Encoded Path Traversal"),
+
     # Admin / Config Probes
     ("GET",  "/admin",                                    None,  "Admin Probe"),
     ("GET",  "/admin/config/database",                    None,  "Admin Probe"),
@@ -86,6 +91,8 @@ ATTACK_ENDPOINTS = [
     ("POST", "/api/products",  {"name":"x"*5000, "price":1, "category":"test", "stock":1}, "Large Payload"),
     ("POST", "/api/upload",    {"data": "A" * 8000},       "Large Payload"),
     ("POST", "/api/users",     {"name":"B"*6000, "email":"bad@bad.com"}, "Large Payload"),
+    # Edge Case: Borderline large payload
+    ("POST", "/api/upload",    {"data": "X" * 3000},       "Borderline Large Payload"),
 ]
 
 
@@ -97,7 +104,8 @@ def generate_unique_ip(index):
 
 def send_request(method, path, body, ip, ground_truth):
     """Send a single request and return result dict."""
-    url = GATEWAY_URL + path
+    safe_path = urllib.parse.quote(path, safe="/?=&;'+-<>{}()|*^")
+    url = GATEWAY_URL + safe_path
     headers = {
         "Content-Type":    "application/json",
         "X-Forwarded-For": ip,
@@ -145,6 +153,7 @@ def main():
 
     def log(msg=""):
         print(msg)
+        sys.stdout.flush()
         log_f.write(msg + "\n")
         log_f.flush()
 
@@ -157,7 +166,8 @@ def main():
     # ── BUILD RANDOM REQUEST LIST ───────────────────────────────────
     requests = []
     for i in range(n_normal):
-        method, path, body = random.choice(NORMAL_ENDPOINTS)
+        endpoint = random.choice(NORMAL_ENDPOINTS)
+        method, path, body = endpoint[0], endpoint[1], endpoint[2]
         requests.append({"method": method, "path": path, "body": body,
                           "type": "normal", "attack_cat": "-"})
     for i in range(n_attack):

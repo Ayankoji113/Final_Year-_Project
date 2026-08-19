@@ -1,0 +1,54 @@
+# LAB OVERRIDE - data generation and evaluation only. NEVER deploy this.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.lab.yml up -d
+#
+# It relaxes exactly three things, each of which is a deliberate security
+# trade-off that is safe only on an isolated machine:
+#
+#   GUARD_MODE=monitor          nothing is blocked, so the corpus contains the
+#                               attacks instead of stopping at a 403
+#   GUARD_TRUSTED_PROXY_HOPS=1  lets the generator present distinct client IPs
+#                               via X-Forwarded-For so per-client rate features
+#                               are meaningful. In production this header is
+#                               attacker-controlled and is ignored.
+#   GUARD_TRUST_LABEL_HEADER    lets the generator attach ground-truth labels.
+#                               In production this is a training-data poisoning
+#                               channel and is ignored.
+services:
+  gateway:
+    environment:
+      GUARD_MODE: monitor
+      GUARD_TRUSTED_PROXY_HOPS: "1"
+      GUARD_TRUST_LABEL_HEADER: "true"
+    volumes:
+      - ./data:/app/data
+      - ./ml_pipeline/models:/app/models    # writable: training rewrites them
+
+  # Exposed so you can inspect keys while tuning rate limits.
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  backend:
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  # Monitoring dashboard. Bound to loopback only: it renders security events
+  # and must not be exposed. Anything internet-facing needs authentication in
+  # front of it first.
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    container_name: microapi-dashboard
+    ports:
+      - "127.0.0.1:8501:8501"
+    environment:
+      DATA_DIR: /app/data
+      MODELS_DIR: /app/models
+    volumes:
+      - ./data:/app/data:ro
+      - ./ml_pipeline/models:/app/models:ro
+    networks: [edge]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]

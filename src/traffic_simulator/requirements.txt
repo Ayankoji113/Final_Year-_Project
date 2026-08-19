@@ -1,1 +1,2 @@
-locust>=2.20
+﻿# generate.py uses only the standard library -- no dependencies.
+# (The old Locust-based generator is preserved in src/legacy/.)

@@ -1,344 +1,558 @@
+"""MicroAPI Guard - training pipeline.
+
+METHODOLOGY (and why it differs from the previous version)
+==========================================================
+
+Split strategy - GROUPED, not random
+------------------------------------
+Requests are grouped by client session. A random row-level split lets two
+near-identical requests from the same session land on opposite sides, which
+inflates every metric. We partition *sessions* into four disjoint pools:
+
+    base   45%   normal rows only   -> fit scaler, Isolation Forest, Autoencoder
+    meta   25%   labelled           -> fit the Logistic Regression meta-learner
+    val    15%   labelled           -> pick the decision threshold
+    test   15%   labelled           -> touched exactly once, at the very end
+
+Stacking without leakage
+------------------------
+The old pipeline generated the meta-learner's training features by scoring the
+*same rows* the base models were fitted on, then min-max normalised those
+features using validation-set statistics. Both leak. The meta-learner ended up
+with a negative Isolation Forest coefficient - it had learned an artefact.
+
+Here the base detectors are fitted only on `base`, and never see `meta`, `val`
+or `test`. Meta-features are therefore out-of-sample by construction, which is
+what k-fold OOF stacking exists to simulate - we get it directly because the
+base models are unsupervised and need no labels, so a disjoint pool costs
+nothing. Normalisation ranges come from `base` alone.
+
+Layer-1 filtering
+-----------------
+Requests that Layer 1 blocks outright never reach the model in production, so
+training or evaluating the model on them would measure the wrong distribution.
+They are excluded from the ML stages and re-attached for the end-to-end
+pipeline evaluation, where L1's contribution is counted honestly.
+
+Zero-day evaluation
+-------------------
+Whole attack families (cmdi, ssti, exfil) are withheld from `meta` and `val`
+and appear only in `test`. Recall on those families is a real measurement of
+detecting attack types never seen during training.
 """
-MicroAPI Guard — ML Pipeline (Phase 3 — MAXIMISED)
-====================================================
-Full sklearn stack via portable D: drive path (bypasses AppLocker):
-  1. Feature Engineering    (log, ratios, interaction terms)
-  2. Isolation Forest       (unsupervised anomaly detection)
-  3. Autoencoder            (pure-numpy, no Cython needed)
-  4. HistGradientBoosting   (fastest, most accurate sklearn GB)
-  5. ExtraTreesClassifier   (high-variance complement to GB)
-  6. RandomForestClassifier (stable baseline)
-  7. Weighted Fusion        (GB=40%, ET=20%, RF=20%, IF=10%, AE=5%, meta=5%)
-  8. 0.005-step threshold sweep on held-out validation set
-"""
-import os, sys, json, pickle, random
+import hashlib
+import json
+import os
+import pickle
+import sys
+import time
+from collections import Counter, defaultdict
+
 import numpy as np
-from collections import Counter
 
-# ── Portable sklearn (D: drive — not blocked by AppLocker) ────────────────────
-_PORTABLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sklearn_portable')
-if _PORTABLE not in sys.path:
-    sys.path.insert(0, _PORTABLE)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pandas as pd
-from sklearn.ensemble import (
-    IsolationForest, RandomForestClassifier,
-    ExtraTreesClassifier, HistGradientBoostingClassifier,
-)
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-import joblib
+from common import config, features, rules                     # noqa: E402
+from common.autoencoder import NumpyAutoencoder                # noqa: E402
+from common.features import Baseline                           # noqa: E402
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-DATA_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'api_traffic_features.jsonl')
-MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
-os.makedirs(MODELS_DIR, exist_ok=True)
+import joblib                                                  # noqa: E402
+from sklearn.ensemble import IsolationForest                   # noqa: E402
+from sklearn.linear_model import LogisticRegression            # noqa: E402
+from sklearn.metrics import (average_precision_score,          # noqa: E402
+                             roc_auc_score)
+from sklearn.preprocessing import StandardScaler               # noqa: E402
 
-NUMERICAL_COLS   = ['request_body_size', 'sliding_window_count']
-CATEGORICAL_COLS = ['http_method', 'http_path']
-LABEL_COL = 'label'
-RANDOM_SEED = 42
-random.seed(RANDOM_SEED); np.random.seed(RANDOM_SEED)
+SEED = int(os.getenv("TRAIN_SEED", 42))
+NOVEL_FAMILIES = {"cmdi", "exfil", "ssti"}
 
-ACCEPT_F1  = 0.70
-ACCEPT_REC = 0.65
+MODELS_DIR = config.MODELS_DIR
+# Overridable so a preserved corpus can be retrained without regenerating
+# traffic (feature-set changes only need a re-read of the logged vectors).
+EVENT_LOG = os.getenv("TRAIN_EVENT_LOG", config.EVENT_LOG)
+
+RULE_SEVERITY = {r.id: r.severity for r in rules.RULES}
 
 
-# ── PURE-NUMPY AUTOENCODER (no Cython) ───────────────────────────────────────
-class NumpyAutoencoder:
-    def __init__(self, input_dim, hidden=64, bottleneck=16, lr=0.003, epochs=80, batch=256):
-        self.lr, self.epochs, self.batch = lr, epochs, batch
+# ── data loading ──────────────────────────────────────────────────────────────
 
-        def xavier(a, b):
-            return np.random.randn(a, b) * np.sqrt(2.0 / (a + b))
-
-        self.W1, self.b1 = xavier(input_dim, hidden),    np.zeros(hidden)
-        self.W2, self.b2 = xavier(hidden,    bottleneck), np.zeros(bottleneck)
-        self.W3, self.b3 = xavier(bottleneck, hidden),   np.zeros(hidden)
-        self.W4, self.b4 = xavier(hidden,    input_dim),  np.zeros(input_dim)
-
-    @staticmethod
-    def relu(x):   return np.maximum(0.0, x)
-    @staticmethod
-    def relu_d(x): return (x > 0).astype(float)
-
-    def _fwd(self, X):
-        h1 = self.relu(X  @ self.W1 + self.b1)
-        h2 = self.relu(h1 @ self.W2 + self.b2)
-        h3 = self.relu(h2 @ self.W3 + self.b3)
-        return h3 @ self.W4 + self.b4, h3, h2, h1
-
-    def fit(self, X):
-        n = len(X)
-        for ep in range(self.epochs):
-            idx = np.random.permutation(n)
-            total = 0.0
-            for s in range(0, n, self.batch):
-                b = X[idx[s:s+self.batch]]
-                out, h3, h2, h1 = self._fwd(b)
-                diff = out - b; total += (diff**2).mean()
-                do   = 2*diff/len(b)
-                dW4=h3.T@do; db4=do.sum(0)
-                dh3=(do@self.W4.T)*self.relu_d(h2@self.W3+self.b3)
-                dW3=h2.T@dh3; db3=dh3.sum(0)
-                dh2=(dh3@self.W3.T)*self.relu_d(h1@self.W2+self.b2)
-                dW2=h1.T@dh2; db2=dh2.sum(0)
-                dh1=(dh2@self.W2.T)*self.relu_d(b@self.W1+self.b1)
-                dW1=b.T@dh1;  db1=dh1.sum(0)
-                for (W, dW, b_, db) in [(self.W4,dW4,self.b4,db4),(self.W3,dW3,self.b3,db3),
-                                        (self.W2,dW2,self.b2,db2),(self.W1,dW1,self.b1,db1)]:
-                    W -= self.lr*dW; b_ -= self.lr*db
-            if (ep+1) % 20 == 0:
-                print(f"    Epoch [{ep+1}/{self.epochs}]  Loss: {total:.4f}")
-
-    def score(self, X):
-        out, _, _, _ = self._fwd(X)
-        return ((X-out)**2).mean(axis=1)
-
-
-# ── HELPERS ───────────────────────────────────────────────────────────────────
-def load_jsonl(path):
+def load_events(path):
     rows = []
-    with open(path, 'r', errors='ignore') as f:
-        for line in f:
+    with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+        for line in fh:
             line = line.strip()
-            if line:
-                try: rows.append(json.loads(line))
-                except: pass
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
     return rows
 
-def stratified_split(X, y, ratio=0.2, seed=42):
-    rng = random.Random(seed)
-    tr, te = [], []
-    for cls in sorted(set(y)):
-        idx = [i for i, v in enumerate(y) if v == cls]
-        rng.shuffle(idx); cut = max(1, int(len(idx)*ratio))
-        te.extend(idx[:cut]); tr.extend(idx[cut:])
-    rng.shuffle(tr); rng.shuffle(te)
-    ya = list(y)
-    if isinstance(X, pd.DataFrame):
-        return X.iloc[tr].copy(), X.iloc[te].copy(), [ya[i] for i in tr], [ya[i] for i in te]
-    return X[tr], X[te], [ya[i] for i in tr], [ya[i] for i in te]
 
-def minmax(arr, ref=None):
-    src = ref if ref is not None else arr
-    lo, hi = src.min(), src.max()
-    return (arr - lo) / (hi - lo + 1e-9)
-
-def best_thresh(val_s, y_val):
-    y = np.array(y_val)
-    best_f1, best_t = 0.0, 0.5
-    for t in np.arange(0.01, 0.99, 0.005):
-        p  = (val_s >= t).astype(int)
-        tp = ((p==1)&(y==1)).sum(); fp=((p==1)&(y==0)).sum(); fn=((p==0)&(y==1)).sum()
-        pr = tp/(tp+fp+1e-9); rc=tp/(tp+fn+1e-9)
-        f1 = 2*pr*rc/(pr+rc+1e-9)
-        if f1 > best_f1: best_f1, best_t = f1, t
-    return best_t, best_f1
-
-def report(y_true, y_pred):
-    y, p = np.array(y_true), np.array(y_pred)
-    tp=((p==1)&(y==1)).sum(); tn=((p==0)&(y==0)).sum()
-    fp=((p==1)&(y==0)).sum(); fn=((p==0)&(y==1)).sum()
-    acc=float(tp+tn)/len(y); prec=float(tp)/(tp+fp+1e-9)
-    rec=float(tp)/(tp+fn+1e-9); f1=2*prec*rec/(prec+rec+1e-9)
-    print(f"\n  Confusion Matrix:")
-    print(f"  {'':13s} Pred-Normal  Pred-Attack")
-    print(f"  {'True-Normal':13s}    {tn:7,}     {fp:7,}")
-    print(f"  {'True-Attack':13s}    {fn:7,}     {tp:7,}")
-    print(f"\n  Accuracy : {acc:.4f}")
-    print(f"  Precision: {prec:.4f}")
-    print(f"  Recall   : {rec:.4f}")
-    print(f"  F1-Score : {f1:.4f}")
-    return acc, prec, rec, f1
+def parse_label(rec):
+    """'normal' -> (0, None);  'attack:sqli' -> (1, 'sqli')."""
+    raw = rec.get("label")
+    if not raw:
+        return None, None
+    raw = str(raw)
+    if raw.startswith("attack"):
+        parts = raw.split(":", 1)
+        return 1, (parts[1] if len(parts) > 1 else "unknown")
+    if raw.startswith("normal"):
+        return 0, None
+    return None, None
 
 
-# ── FEATURE ENGINEERING ───────────────────────────────────────────────────────
-def engineer_features(df):
-    df = df.copy()
-    df['log_body_size']    = np.log1p(df['request_body_size'])
-    df['log_window']       = np.log1p(df['sliding_window_count'])
-    df['is_large_body']    = (df['request_body_size'] > 1000).astype(float)
-    df['is_high_rate']     = (df['sliding_window_count'] > 15).astype(float)
-    path = df['http_path'].astype(str).str.lower()
-    df['path_has_admin']   = path.str.contains('admin|root|config', regex=True).astype(float)
-    df['path_has_sqli']    = path.str.contains(r"'|--|union|select|drop", regex=True).astype(float)
-    df['path_has_traverse']= path.str.contains(r'\.\./|etc/passwd|\.env|\.git', regex=True).astype(float)
-    df['path_depth']       = df['http_path'].astype(str).str.count('/').clip(0, 10).astype(float)
-    df['is_post_large']    = ((df['http_method'].astype(str).str.upper()=='POST') & (df['request_body_size']>500)).astype(float)
-    return df
+def l1_blocks(rec) -> bool:
+    """Did Layer 1 settle this request on its own?
 
-ENG_NUMERICAL = NUMERICAL_COLS + [
-    'log_body_size','log_window',
-    'is_large_body','is_high_rate',
-    'path_has_admin','path_has_sqli','path_has_traverse',
-    'path_depth','is_post_large',
-]
+    Covers BOTH halves of Layer 1: signature rules and the hard rate limit.
+    Including the rate half matters. In production a rate-limited request is
+    rejected before any model runs, so training the ML layers on those rows -
+    and then reporting the model's recall on volumetric attacks - measures a
+    decision path that never executes. Excluding them scopes the ML layers to
+    their real job: the traffic that is neither obviously malicious nor
+    obviously excessive.
+    """
+    if any(RULE_SEVERITY.get(h) == rules.BLOCK for h in rec.get("rule_hits", [])):
+        return True
+    return rec.get("layer") == "L1-rate"
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
-if __name__ == '__main__':
-    print("="*64)
-    print("  MicroAPI Guard -- Phase 3 MAXIMISED Training Pipeline")
-    print("="*64)
+def pool_of(client: str) -> str:
+    """Deterministic session -> pool assignment. Hash-based so it is stable
+    across reruns and cannot accidentally correlate with time or label."""
+    h = int(hashlib.sha256(f"{client}|{SEED}".encode()).hexdigest()[:8], 16) % 100
+    if h < 45:
+        return "base"
+    if h < 70:
+        return "meta"
+    if h < 85:
+        return "val"
+    return "test"
 
-    # 1. Load
-    print(f"\n[1/7] Loading data...")
-    rows   = load_jsonl(DATA_FILE)
-    if not rows: raise ValueError("No data!")
-    labels = [r.get(LABEL_COL,'normal') for r in rows]
-    y_all  = np.array([1 if l=='attack' else 0 for l in labels])
-    print(f"      {len(rows):,} records | {dict(Counter(labels))}")
 
-    # 2. Feature Engineering
-    print("\n[2/7] Feature engineering...")
-    raw_df = pd.DataFrame({
-        'request_body_size':    [float(r.get('request_body_size',0))    for r in rows],
-        'sliding_window_count': [float(r.get('sliding_window_count',0)) for r in rows],
-        'http_method':          [r.get('http_method','GET')              for r in rows],
-        'http_path':            [r.get('http_path','/')                  for r in rows],
-    })
-    df_eng = engineer_features(raw_df)
+# ── metrics ───────────────────────────────────────────────────────────────────
 
-    # 3. Splitting + Preprocess
-    print("\n[3/7] Splitting (60/20/20 stratified) & Preprocessing (No Leakage)...")
-    df_tr, df_tmp, y_tr, y_tmp = stratified_split(df_eng, y_all, ratio=0.4, seed=42)
-    df_val, df_te, y_val, y_te = stratified_split(df_tmp,  y_tmp, ratio=0.5, seed=42)
-    
-    pre = ColumnTransformer([
-        ('num', StandardScaler(),                                            ENG_NUMERICAL),
-        ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), CATEGORICAL_COLS),
-    ])
-    X_tr = pre.fit_transform(df_tr)
-    X_val = pre.transform(df_val)
-    X_te = pre.transform(df_te)
-    joblib.dump(pre, os.path.join(MODELS_DIR, 'preprocessor.pkl'))
-    print(f"      Train matrix: {X_tr.shape} | Saved preprocessor.pkl")
-    X_tr_n  = X_tr[np.array(y_tr)==0]
-    y_tr_a  = np.array(y_tr)
-    print(f"      Train: {X_tr.shape[0]:,} | Val: {X_val.shape[0]:,} | Test: {X_te.shape[0]:,}")
-    print(f"      Train-normal (unsupervised): {X_tr_n.shape[0]:,}")
+def confusion(y, p):
+    y, p = np.asarray(y), np.asarray(p)
+    tp = int(((p == 1) & (y == 1)).sum()); tn = int(((p == 0) & (y == 0)).sum())
+    fp = int(((p == 1) & (y == 0)).sum()); fn = int(((p == 0) & (y == 1)).sum())
+    return tp, tn, fp, fn
 
-    # 4. Isolation Forest
-    print("\n[4/7] Isolation Forest (unsupervised)...")
-    iforest = IsolationForest(n_estimators=300, contamination=0.01,
-                              max_samples=min(1024, X_tr_n.shape[0]),
-                              random_state=42, n_jobs=1)
-    iforest.fit(X_tr_n)
-    joblib.dump(iforest, os.path.join(MODELS_DIR, 'isolation_forest.pkl'))
-    if_val = -iforest.decision_function(X_val)
-    if_te  = -iforest.decision_function(X_te)
-    print(f"      Saved isolation_forest.pkl")
 
-    # 5. Autoencoder
-    print("\n[5/7] Autoencoder (pure numpy)...")
-    ae = NumpyAutoencoder(X_tr_n.shape[1], hidden=64, bottleneck=16,
-                          lr=0.003, epochs=80, batch=256)
-    ae.fit(X_tr_n)
-    with open(os.path.join(MODELS_DIR,'autoencoder.pkl'),'wb') as fh: pickle.dump(ae, fh)
-    ae_val = ae.score(X_val); ae_te = ae.score(X_te)
-    print(f"      Saved autoencoder.pkl")
-
-    # 6. Supervised Ensemble
-    print("\n[6/7] Training supervised ensemble...")
-
-    print("      Training HistGradientBoosting...")
-    hgb = HistGradientBoostingClassifier(
-        max_iter=500, max_depth=8, learning_rate=0.05,
-        min_samples_leaf=20, l2_regularization=0.1,
-        class_weight='balanced', random_state=42
-    )
-    hgb.fit(X_tr, y_tr_a)
-    joblib.dump(hgb, os.path.join(MODELS_DIR, 'hgb.pkl'))
-    hgb_val = hgb.predict_proba(X_val)[:,1]
-    hgb_te  = hgb.predict_proba(X_te)[:,1]
-
-    print("      Training ExtraTrees...")
-    et = ExtraTreesClassifier(n_estimators=400, class_weight='balanced',
-                              max_depth=20, min_samples_leaf=5,
-                              max_features='sqrt', random_state=42, n_jobs=1)
-    et.fit(X_tr, y_tr_a)
-    joblib.dump(et, os.path.join(MODELS_DIR, 'extra_trees.pkl'))
-    et_val = et.predict_proba(X_val)[:,1]
-    et_te  = et.predict_proba(X_te)[:,1]
-
-    print("      Training RandomForest...")
-    rf = RandomForestClassifier(n_estimators=400, class_weight='balanced',
-                                max_depth=20, min_samples_leaf=5,
-                                max_features='sqrt', random_state=42, n_jobs=1)
-    rf.fit(X_tr, y_tr_a)
-    joblib.dump(rf, os.path.join(MODELS_DIR, 'rf_direct.pkl'))
-    rf_val = rf.predict_proba(X_val)[:,1]
-    rf_te  = rf.predict_proba(X_te)[:,1]
-
-    print("      Training Meta-LR on anomaly scores...")
-    if_tr_n  = minmax(-iforest.decision_function(X_tr), ref=if_val)
-    ae_tr_n  = minmax(ae.score(X_tr), ref=ae_val)
-    if_val_n = minmax(if_val); ae_val_n = minmax(ae_val)
-    if_te_n  = minmax(if_te, ref=if_val); ae_te_n = minmax(ae_te, ref=ae_val)
-    meta_lr  = LogisticRegression(C=10.0, max_iter=3000, random_state=42)
-    meta_lr.fit(np.column_stack([if_tr_n, ae_tr_n]), y_tr_a)
-    meta_val = meta_lr.predict_proba(np.column_stack([if_val_n, ae_val_n]))[:,1]
-    meta_te  = meta_lr.predict_proba(np.column_stack([if_te_n,  ae_te_n]))[:,1]
-    joblib.dump(meta_lr, os.path.join(MODELS_DIR, 'meta_learner.pkl'))
-    print(f"      All models saved.")
-
-    # 7. Fusion + Threshold Sweep
-    print("\n[7/7] Score fusion + threshold sweep...")
-    # Weighted fusion: HGB gets most weight (best single model)
-    fuse_val = 0.40*hgb_val + 0.20*et_val + 0.20*rf_val + \
-               0.10*if_val_n + 0.05*ae_val_n + 0.05*meta_val
-    fuse_te  = 0.40*hgb_te  + 0.20*et_te   + 0.20*rf_te  + \
-               0.10*if_te_n  + 0.05*ae_te_n  + 0.05*meta_te
-
-    sources = [
-        ('isolation_forest',   if_val_n, if_te_n),
-        ('autoencoder',        ae_val_n, ae_te_n),
-        ('meta_lr',            meta_val, meta_te),
-        ('hist_gradient_boost',hgb_val,  hgb_te),
-        ('extra_trees',        et_val,   et_te),
-        ('random_forest',      rf_val,   rf_te),
-        ('fusion',             fuse_val, fuse_te),
-    ]
-
-    print("\n  Threshold sweep on held-out validation set (step=0.005):")
-    best_f1, best_t, best_te_s, best_src = 0, 0.5, fuse_te, 'fusion'
-    for name, vs, ts in sources:
-        t, f = best_thresh(vs, y_val)
-        print(f"    {name:22s}  thresh={t:.3f}  val_F1={f:.4f}")
-        if f > best_f1:
-            best_f1, best_t, best_te_s, best_src = f, t, ts, name
-
-    print(f"\n  >>> Selected: {best_src}  threshold={best_t:.3f}  val_F1={best_f1:.4f}")
-
-    # Evaluation
-    print("\n" + "="*64)
-    print("  TEST SET EVALUATION")
-    print("="*64)
-    y_pred = (best_te_s >= best_t).astype(int)
-    acc, prec, rec, f1 = report(y_te, y_pred)
-
-    meta_info = {
-        'best_source': best_src, 'best_threshold': float(best_t),
-        'accuracy': round(float(acc),4), 'precision': round(float(prec),4),
-        'recall':   round(float(rec),4), 'f1':        round(float(f1),4),
+def metrics(y, p):
+    tp, tn, fp, fn = confusion(y, p)
+    n = max(1, len(y))
+    prec = tp / (tp + fp) if (tp + fp) else 0.0
+    rec = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
+    return {
+        "accuracy": (tp + tn) / n, "precision": prec, "recall": rec, "f1": f1,
+        "fpr": fp / (fp + tn) if (fp + tn) else 0.0,
+        "fnr": fn / (fn + tp) if (fn + tp) else 0.0,
+        "tp": tp, "tn": tn, "fp": fp, "fn": fn,
     }
-    with open(os.path.join(MODELS_DIR,'threshold_meta.pkl'),'wb') as fh:
-        pickle.dump(meta_info, fh)
 
-    # Acceptance
-    print("\n" + "="*64)
-    print("  ACCEPTANCE CRITERIA")
-    print("="*64)
-    ok_f1 = f1 >= ACCEPT_F1; ok_rec = rec >= ACCEPT_REC
-    print(f"  F1     >= {ACCEPT_F1}:  {'PASS' if ok_f1  else 'FAIL'}  ({f1:.4f})")
-    print(f"  Recall >= {ACCEPT_REC}: {'PASS' if ok_rec else 'FAIL'}  ({rec:.4f})")
-    if ok_f1 and ok_rec:
-        print("\n  [ACCEPTED]  ML pipeline meets all performance targets!")
-    else:
-        print("\n  [RETRY]  Targets not met.")
-    print("="*64)
-    print(f"\n  Models dir: {MODELS_DIR}")
-    print(f"  {meta_info}")
-    sys.exit(0 if (ok_f1 and ok_rec) else 1)
+
+def show(name, m, auc=None, ap=None):
+    print(f"\n  {name}")
+    print(f"    {'':12s} pred-normal  pred-attack")
+    print(f"    {'true-normal':12s} {m['tn']:10,} {m['fp']:12,}")
+    print(f"    {'true-attack':12s} {m['fn']:10,} {m['tp']:12,}")
+    line = (f"    acc={m['accuracy']:.4f}  prec={m['precision']:.4f}  "
+            f"rec={m['recall']:.4f}  f1={m['f1']:.4f}  "
+            f"FPR={m['fpr']:.4f}  FNR={m['fnr']:.4f}")
+    if auc is not None:
+        line += f"\n    ROC-AUC={auc:.4f}  PR-AUC={ap:.4f}"
+    print(line)
+
+
+def pick_threshold(scores, y, target_fpr=None):
+    """Maximise F1 on the validation pool; optionally respect an FPR ceiling.
+
+    A security gateway that blocks 5% of real users is unusable regardless of
+    its recall, so the operator-facing knob is the false-positive budget.
+    """
+    y = np.asarray(y)
+    best = (0.0, 0.5)
+    for t in np.arange(0.02, 0.99, 0.005):
+        m = metrics(y, (scores >= t).astype(int))
+        if target_fpr is not None and m["fpr"] > target_fpr:
+            continue
+        if m["f1"] > best[0]:
+            best = (m["f1"], float(t))
+    return best[1], best[0]
+
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    np.random.seed(SEED)
+    print("=" * 70)
+    print("  MicroAPI Guard - training pipeline")
+    print("=" * 70)
+
+    if not os.path.exists(EVENT_LOG):
+        print(f"\n  ERROR: no event log at {EVENT_LOG}")
+        print("  Run the gateway in monitor mode and generate traffic first:")
+        print("    python traffic_simulator/generate.py")
+        return 1
+
+    print(f"\n[1/8] Loading {EVENT_LOG}")
+    raw = load_events(EVENT_LOG)
+    print(f"      {len(raw):,} events")
+
+    rows = []
+    for r in raw:
+        y, fam = parse_label(r)
+        if y is None or not r.get("features"):
+            continue
+        # Raw window count comes from the event metadata. Older corpora stored
+        # it only as the log-scaled feature, so fall back to that.
+        win = r.get("window_count")
+        if win is None:
+            win = float(np.expm1(r["features"].get("win_log_count", 0.0)))
+        rows.append({"y": y, "fam": fam, "client": r.get("client", "?"),
+                     "f": r["features"], "l1": l1_blocks(r),
+                     "by_rule": bool(r.get("rule_hits")),
+                     "template": r.get("template", "/"),
+                     "body_size": r.get("body_size", 0),
+                     "win": float(win)})
+    print(f"      {len(rows):,} labelled events "
+          f"({sum(1 for r in rows if r['y'] == 1):,} attack)")
+    if len(rows) < 2000:
+        print("      WARNING: very small corpus; results will be noisy.")
+
+    # ── integrity check: the failure mode that invalidated the last build ────
+    sig = Counter(hashlib.md5(
+        json.dumps([round(float(r["f"].get(n, 0)), 4) for n in features.FEATURE_NAMES]
+                   ).encode()).hexdigest() for r in rows)
+    uniq = len(sig)
+    print(f"      unique feature vectors: {uniq:,} / {len(rows):,} "
+          f"({100 * uniq / max(1, len(rows)):.1f}% distinct)")
+    if uniq < 0.2 * len(rows):
+        print("      *** WARNING: heavy duplication. Metrics will be optimistic. ***")
+
+    # ── L1 partition ─────────────────────────────────────────────────────────
+    l1_rows = [r for r in rows if r["l1"]]
+    ml_rows = [r for r in rows if not r["l1"]]
+    l1_tp = sum(1 for r in l1_rows if r["y"] == 1)
+    n_rule = sum(1 for r in l1_rows if r.get("by_rule"))
+    print(f"\n[2/8] Layer 1 short-circuits {len(l1_rows):,} events "
+          f"({l1_tp:,} attack, {len(l1_rows) - l1_tp:,} normal=false positive)")
+    print(f"      of which {n_rule:,} by signature rule, "
+          f"{len(l1_rows) - n_rule:,} by rate limit")
+    print(f"      {len(ml_rows):,} events reach the ML layers")
+    if l1_tp < len(l1_rows):
+        print(f"      NOTE: {len(l1_rows) - l1_tp:,} legitimate requests were "
+              f"caught by Layer 1.")
+        print("      These are real false positives and count against the")
+        print("      full-pipeline FPR reported at the end.")
+
+    # ── pools ────────────────────────────────────────────────────────────────
+    pools = defaultdict(list)
+    for r in ml_rows:
+        pools[pool_of(r["client"])].append(r)
+
+    base = [r for r in pools["base"] if r["y"] == 0]          # normal only
+    meta = [r for r in pools["meta"] if r["fam"] not in NOVEL_FAMILIES]
+    val = [r for r in pools["val"] if r["fam"] not in NOVEL_FAMILIES]
+    test = pools["test"]                                      # novel families kept
+
+    print(f"\n[3/8] Session-grouped pools (novel families held out of meta/val)")
+    for nm, p in (("base(normal)", base), ("meta", meta), ("val", val), ("test", test)):
+        na = sum(1 for r in p if r["y"] == 1)
+        print(f"      {nm:14s} {len(p):7,}  attack={na:6,}")
+    if min(len(base), len(meta), len(val), len(test)) < 50:
+        print("      ERROR: a pool is too small to train on.")
+        return 1
+
+    X = lambda p: features.to_matrix([r["f"] for r in p])      # noqa: E731
+    Y = lambda p: np.array([r["y"] for r in p])                # noqa: E731
+
+    # ── calibration baseline from base pool ──────────────────────────────────
+    print("\n[4/8] Deriving statistical baseline from normal traffic")
+    baseline = build_baseline(base)
+    print(f"      {len(baseline.endpoints)} endpoint templates, "
+          f"rate mean={baseline.rate_mean:.2f} std={baseline.rate_std:.2f}")
+
+    # TRAIN/SERVE SKEW FIX.
+    #
+    # Three features are defined relative to the calibration baseline:
+    # rate_z, body_size_z and path_known. While the corpus was being collected
+    # no baseline existed yet, so the gateway logged all three as constant 0.
+    # If we trained on those constants the autoencoder would learn "this is
+    # always zero", and then in production - where the baseline DOES exist and
+    # the values vary - every ordinary request would produce a huge
+    # reconstruction error and be blocked. That is exactly what happened on the
+    # first enforcement run: legitimate traffic scored autoencoder=1.0.
+    #
+    # We therefore recompute them here from the raw scalars, using a baseline
+    # derived ONLY from the base pool, so training sees the same feature
+    # definition the gateway will use at inference time.
+    n_patched = apply_baseline(rows, baseline)
+    print(f"      recomputed baseline-relative features on {n_patched:,} rows "
+          f"(rate_z, body_size_z, path_known)")
+    for nm in ("rate_z", "body_size_z", "path_known"):
+        vals = np.array([r["f"].get(nm, 0.0) for r in rows], dtype=float)
+        print(f"        {nm:14s} mean={vals.mean():+.4f} std={vals.std():.4f} "
+              f"{'<-- STILL CONSTANT, skew risk' if vals.std() < 1e-9 else ''}")
+
+    # ── scaler + base detectors, fitted on `base` ONLY ───────────────────────
+    print("\n[5/8] Base detectors (unsupervised, normal traffic only)")
+    Xb = X(base)
+
+    # ZERO-VARIANCE GUARD.
+    #
+    # A feature that is constant across the training pool but varies in
+    # production is the single most damaging failure mode for this design. The
+    # scaler leaves it untouched (sklearn sets scale_=1 when variance is 0) and
+    # the autoencoder learns to emit exactly that constant, so the first live
+    # request carrying any other value produces a huge reconstruction error and
+    # is blocked. It has bitten this pipeline twice - once via the
+    # baseline-relative features, once via path_dot_count - so it is now
+    # checked rather than discovered from false positives.
+    sd_b = Xb.std(axis=0)
+    dead = [features.FEATURE_NAMES[i] for i in np.where(sd_b < 1e-12)[0]]
+    # NEAR-constant is almost as damaging as constant: a feature with sd 0.003
+    # turns a routine capitalised name into a multi-sigma outlier. Flag anything
+    # whose spread is tiny relative to a standardised scale.
+    near = [(features.FEATURE_NAMES[i], float(sd_b[i]), float(Xb[:, i].mean()))
+            for i in np.where((sd_b >= 1e-12) & (sd_b < 0.01))[0]]
+    if dead:
+        print("\n      *** ZERO-VARIANCE FEATURES IN TRAINING POOL ***")
+        for nm in dead:
+            print(f"          {nm}")
+        print("      These are constant here but will vary in production, which")
+        print("      causes the autoencoder to reject ordinary traffic. Either")
+        print("      generate traffic that exercises them, or remove them from")
+        print("      FEATURE_NAMES.")
+    if near:
+        print("\n      *** NEAR-CONSTANT FEATURES (sd < 0.01) ***")
+        for nm, s, m in near:
+            print(f"          {nm:24s} mean={m:.6f} sd={s:.6f}")
+        print("      The corpus barely exercises these, so ordinary production")
+        print("      values will read as extreme. The denoising autoencoder")
+        print("      absorbs some of this, but widening the traffic generator")
+        print("      is the real fix.")
+
+    scaler = StandardScaler().fit(Xb)
+    Xb_s = scaler.transform(Xb)
+
+    iforest = IsolationForest(n_estimators=300, contamination="auto",
+                              max_samples=min(4096, len(Xb_s)),
+                              random_state=SEED, n_jobs=-1).fit(Xb_s)
+    print(f"      IsolationForest fitted on {len(Xb_s):,} normal rows")
+
+    ae = NumpyAutoencoder(Xb_s.shape[1], hidden=32, bottleneck=12,
+                          lr=1e-3, epochs=300, batch=256, patience=15, seed=SEED)
+    ae.fit(Xb_s)
+    print(f"      Autoencoder best val reconstruction MSE = {ae.best_val:.6f}")
+
+    # Normalisation ranges from TRAINING data only (robust percentiles, so one
+    # outlier cannot compress the whole scale).
+    if_base = -iforest.decision_function(Xb_s)
+    ae_base = ae.score(Xb_s)
+    if_lo, if_hi = float(np.percentile(if_base, 1)), float(np.percentile(if_base, 99.5))
+    ae_lo, ae_hi = float(np.percentile(ae_base, 1)), float(np.percentile(ae_base, 99.5))
+
+    def meta_features(pool):
+        Xs = scaler.transform(X(pool))
+        i = np.clip((-iforest.decision_function(Xs) - if_lo) / (if_hi - if_lo + 1e-9), 0, 1)
+        a = np.clip((ae.score(Xs) - ae_lo) / (ae_hi - ae_lo + 1e-9), 0, 1)
+        # L1's continuous rate contribution, reconstructed the same way the
+        # gateway does it at inference time.
+        r = np.clip(np.array([x["win"] for x in pool]) / max(1, config.RATE_LIMIT), 0, 1)
+        return np.column_stack([r, i, a]), i, a, r
+
+    # ── meta-learner ─────────────────────────────────────────────────────────
+    print("\n[6/8] Meta-learner (Logistic Regression over base-detector scores)")
+    Mm, _, _, _ = meta_features(meta)
+    ym = Y(meta)
+    meta_lr = LogisticRegression(class_weight="balanced", max_iter=2000,
+                                 random_state=SEED).fit(Mm, ym)
+    print(f"      coefficients  rate={meta_lr.coef_[0][0]:+.3f}  "
+          f"iforest={meta_lr.coef_[0][1]:+.3f}  autoencoder={meta_lr.coef_[0][2]:+.3f}")
+    print(f"      intercept     {meta_lr.intercept_[0]:+.3f}")
+    if np.any(meta_lr.coef_[0] < -0.5):
+        print("      NOTE: a strongly negative coefficient means that detector is")
+        print("            anti-correlated with attacks - investigate before trusting.")
+
+    # ── threshold on validation ──────────────────────────────────────────────
+    Mv, iv, av, rv = meta_features(val)
+    yv = Y(val)
+    pv = meta_lr.predict_proba(Mv)[:, 1]
+    thr, vf1 = pick_threshold(pv, yv, target_fpr=config.CALIBRATION_TARGET_FPR)
+    if thr is None:
+        thr, vf1 = pick_threshold(pv, yv)
+    print(f"\n[7/8] Threshold selected on validation only: {thr:.3f} "
+          f"(val F1={vf1:.4f}, FPR budget={config.CALIBRATION_TARGET_FPR})")
+
+    # ── final evaluation - test pool touched for the first time ──────────────
+    print("\n[8/8] TEST EVALUATION (held-out sessions, first and only use)")
+    print("=" * 70)
+    Mt, it_, at_, rt_ = meta_features(test)
+    yt = Y(test)
+    pt = meta_lr.predict_proba(Mt)[:, 1]
+    pred = (pt >= thr).astype(int)
+
+    m_stack = metrics(yt, pred)
+    auc = roc_auc_score(yt, pt) if len(set(yt)) > 1 else float("nan")
+    ap = average_precision_score(yt, pt) if len(set(yt)) > 1 else float("nan")
+    show("ML stack (L2+L3 -> L4), on traffic that reaches the model", m_stack, auc, ap)
+
+    # ── declared baselines (comparison, NOT selection) ───────────────────────
+    print("\n  Baselines on the same test pool. Every model - including the")
+    print("  stack - gets its threshold chosen on validation under the SAME")
+    print(f"  false-positive budget ({config.CALIBRATION_TARGET_FPR:.1%}), otherwise the")
+    print("  comparison rewards whichever model was allowed to be loosest.")
+    baseline_rows = []
+    for nm, sv, st in (("rate only", rv, rt_),
+                       ("isolation forest only", iv, it_),
+                       ("autoencoder only", av, at_)):
+        t_, _ = pick_threshold(sv, yv, target_fpr=config.CALIBRATION_TARGET_FPR)
+        mm = metrics(yt, (st >= t_).astype(int))
+        a_ = roc_auc_score(yt, st) if len(set(yt)) > 1 else float("nan")
+        baseline_rows.append((nm, mm, a_))
+        print(f"    {nm:24s} f1={mm['f1']:.4f}  rec={mm['recall']:.4f}  "
+              f"FPR={mm['fpr']:.4f}  AUC={a_:.4f}")
+    print(f"    {'STACK (L4 meta-learner)':24s} f1={m_stack['f1']:.4f}  "
+          f"rec={m_stack['recall']:.4f}  FPR={m_stack['fpr']:.4f}  AUC={auc:.4f}")
+
+    best_base = max(baseline_rows, key=lambda r: r[1]["f1"])
+    if best_base[1]["f1"] >= m_stack["f1"]:
+        print(f"\n    HONEST RESULT: '{best_base[0]}' matches or beats the stack on F1.")
+        print("    The ensemble's remaining claims are ROC-AUC, a calibrated")
+        print("    probability, and graceful degradation when one detector is")
+        print("    unavailable - not raw F1. Report it that way.")
+
+    # ── per-family recall, separating seen from novel ────────────────────────
+    # Families that Layer 1 catches outright barely appear in the ML test pool,
+    # so their ML-layer n is tiny and their ML recall is not interpretable. We
+    # therefore report both columns: what the model saw, and what the deployed
+    # pipeline actually does to that family.
+    l1_test_all = [r for r in l1_rows if pool_of(r["client"]) == "test"]
+    l1_fam = Counter(r["fam"] for r in l1_test_all if r["y"] == 1)
+
+    print("\n  Per-family detection on test:")
+    print(f"    {'family':12s} {'ML n':>6s} {'ML recall':>10s} "
+          f"{'L1 caught':>10s} {'pipeline recall':>16s}")
+    fam_rows = defaultdict(list)
+    for r, pr in zip(test, pred):
+        if r["y"] == 1:
+            fam_rows[r["fam"]].append(pr)
+    for fam in sorted(set(fam_rows) | set(l1_fam)):
+        v = fam_rows.get(fam, [])
+        n_l1 = l1_fam.get(fam, 0)
+        total = len(v) + n_l1
+        caught = int(np.sum(v)) + n_l1
+        ml_rec = f"{np.mean(v):.4f}" if v else "     n/a"
+        tag = "  <-- NOVEL" if fam in NOVEL_FAMILIES else ""
+        print(f"    {fam:12s} {len(v):6,} {ml_rec:>10s} {n_l1:10,} "
+              f"{caught / max(1, total):16.4f}{tag}")
+    print("    (a small ML n means Layer 1 already blocked that family - which")
+    print("     is the intended behaviour, not a coverage gap)")
+
+    novel = [p for r, p in zip(test, pred) if r["y"] == 1 and r["fam"] in NOVEL_FAMILIES]
+    seen = [p for r, p in zip(test, pred) if r["y"] == 1 and r["fam"] not in NOVEL_FAMILIES]
+    if novel:
+        print(f"\n    zero-day recall (unseen families) : {np.mean(novel):.4f}  n={len(novel):,}")
+    if seen:
+        print(f"    known-family recall               : {np.mean(seen):.4f}  n={len(seen):,}")
+
+    # ── end-to-end pipeline including Layer 1 ────────────────────────────────
+    l1_test = [r for r in l1_rows if pool_of(r["client"]) == "test"]
+    if l1_test:
+        y_all = np.concatenate([yt, [r["y"] for r in l1_test]])
+        p_all = np.concatenate([pred, np.ones(len(l1_test), dtype=int)])
+        m_all = metrics(y_all, p_all)
+        show("FULL PIPELINE (L1 rules + rate + L2/L3 -> L4) - what users actually get",
+             m_all)
+
+    # ── persist ──────────────────────────────────────────────────────────────
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    joblib.dump(scaler, os.path.join(MODELS_DIR, "scaler.pkl"))
+    joblib.dump(iforest, os.path.join(MODELS_DIR, "isolation_forest.pkl"))
+    joblib.dump(meta_lr, os.path.join(MODELS_DIR, "meta_lr.pkl"))
+    with open(os.path.join(MODELS_DIR, "autoencoder.pkl"), "wb") as fh:
+        pickle.dump(ae, fh)
+    with open(os.path.join(MODELS_DIR, "calibration.json"), "w") as fh:
+        json.dump(baseline.to_dict(), fh, indent=2)
+
+    decision = {
+        "version": 3,
+        "trained_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "seed": SEED,
+        "feature_names": features.FEATURE_NAMES,
+        "threshold": thr,
+        "if_lo": if_lo, "if_hi": if_hi, "ae_lo": ae_lo, "ae_hi": ae_hi,
+        "meta_inputs": ["rate", "isolation_forest", "autoencoder"],
+        "pool_sizes": {"base": len(base), "meta": len(meta),
+                       "val": len(val), "test": len(test)},
+        "novel_families": sorted(NOVEL_FAMILIES),
+        "test_metrics": {k: (round(float(v), 4) if isinstance(v, float) else v)
+                         for k, v in m_stack.items()},
+        "test_roc_auc": round(float(auc), 4),
+        "test_pr_auc": round(float(ap), 4),
+        "zero_day_recall": round(float(np.mean(novel)), 4) if novel else None,
+        "unique_feature_ratio": round(uniq / max(1, len(rows)), 4),
+    }
+    with open(os.path.join(MODELS_DIR, "decision.json"), "w") as fh:
+        json.dump(decision, fh, indent=2)
+
+    print("\n" + "=" * 70)
+    print(f"  Artefacts written to {MODELS_DIR}")
+    print("  scaler.pkl  isolation_forest.pkl  autoencoder.pkl  meta_lr.pkl")
+    print("  decision.json  calibration.json")
+    print("=" * 70)
+    return 0
+
+
+def apply_baseline(all_rows, baseline: Baseline) -> int:
+    """Recompute the baseline-relative features in place.
+
+    Must be called with a baseline derived only from the training pool, and
+    must be applied to every pool, so that train, validation and test all use
+    the identical feature definition the gateway uses in production.
+    """
+    from common.features import _safe_z
+
+    for r in all_rows:
+        f = r["f"]
+        window = float(r.get("win", 0.0))
+        f["rate_z"] = _safe_z(window, baseline.rate_mean, baseline.rate_std) \
+            if baseline.ready else 0.0
+        stats = baseline.body_stats(r.get("template", "/"))
+        f["body_size_z"] = _safe_z(float(r.get("body_size", 0)), stats[0], stats[1]) \
+            if stats else 0.0
+        f["path_known"] = 1.0 if baseline.knows(r.get("template", "/")) else 0.0
+    return len(all_rows)
+
+
+def build_baseline(base_rows) -> Baseline:
+    """Per-endpoint body-size and global rate statistics from normal traffic."""
+    per = defaultdict(list)
+    rates = []
+    for r in base_rows:
+        per[r["template"]].append(float(r.get("body_size", 0)))
+        rates.append(float(r.get("win", 0.0)))
+    endpoints = {}
+    for tpl, sizes in per.items():
+        if len(sizes) < 5:          # too few samples to be a baseline
+            continue
+        endpoints[tpl] = {"body_mean": float(np.mean(sizes)),
+                          "body_std": float(np.std(sizes)),
+                          "count": len(sizes)}
+    return Baseline({
+        "endpoints": endpoints,
+        "rate": {"mean": float(np.mean(rates)) if rates else 0.0,
+                 "std": float(np.std(rates)) if rates else 0.0},
+        "n_samples": len(base_rows),
+    })
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+

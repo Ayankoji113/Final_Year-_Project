@@ -3,7 +3,24 @@ __pycache__/
 *.pyc
 node_modules/
 .env
+.pytest_cache/
 
+# Local interpreter and the vendored sklearn workaround. These were committed
+# previously (10,000+ files); they are environment, not source.
 src/ml_pipeline/venv/
-
 src/ml_pipeline/sklearn_portable/
+
+# Generated corpus. Regenerate with traffic_simulator/generate.py -- it is
+# large, machine-specific, and must never be a substitute for reproducing the
+# pipeline.
+src/data/*.jsonl
+
+# Trained artefacts and calibration backups.
+src/ml_pipeline/models/*.pkl
+src/ml_pipeline/models/*.bak
+src/legacy/
+
+# Keep the model metadata: it records the methodology and the reported
+# numbers, which belong in the repository.
+!src/ml_pipeline/models/decision.json
+!src/ml_pipeline/models/calibration.json
