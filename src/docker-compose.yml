@@ -1,41 +1,99 @@
+# MicroAPI Guard - production topology.
+#
+# The guarantee this file has to make is that the gateway is the ONLY way in.
+# The previous version published the backend on 8000 and Redis on 6379, so any
+# client could talk to the backend directly and skip every security control -
+# the gateway was decorative. Here only port 5000 is published; the backend and
+# Redis live on an internal network with no host mapping.
+#
+# For lab data generation, layer the override:
+#   docker compose -f docker-compose.yml -f docker-compose.lab.yml up -d
+
 services:
 
-  # Redis - Sliding Window State Store
   redis:
     image: redis:7-alpine
     container_name: microapi-redis
-    ports:
-      - "6379:6379"
+    # No ports: - reachable only from the internal network.
+    command: >
+      redis-server
+      --save 60 1
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly no
     volumes:
       - redis_data:/data
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
 
-  # Backend - Mock Microservices (User, Product, Order)
   backend:
-    build: ./backend
+    build:
+      context: ./backend
     container_name: microapi-backend
-    ports:
-      - "8000:8000"
+    # No ports: - the whole point is that clients cannot bypass the gateway.
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=2).status==200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
 
-  # Gateway - API Security Gateway (Reverse Proxy)
   gateway:
-    build: ./gateway
+    build:
+      context: .                    # src/ - needs the shared common/ package
+      dockerfile: gateway/Dockerfile
     container_name: microapi-gateway
     ports:
-      - "5000:5000"
+      - "5000:5000"                 # the only published port
     environment:
-      - BACKEND_URL=http://backend:8000
-      - REDIS_URL=redis://redis:6379
-      - JSONL_DIR=/app/data
-      - ML_ENFORCEMENT_MODE=true
+      BACKEND_URL: http://backend:8000
+      REDIS_URL: redis://redis:6379
+      DATA_DIR: /app/data
+      MODELS_DIR: /app/models
+      # enforce-l1 is the safe default for a fresh deployment: the
+      # deterministic signature and rate layers block, while the statistical
+      # layer only records what it would have done. Promote to GUARD_MODE=enforce
+      # after retraining on traffic captured from THIS deployment - a model
+      # trained on synthetic traffic measured 13.55% false positives here even
+      # after threshold calibration.
+      GUARD_MODE: "${GUARD_MODE:-enforce-l1}"
+      GUARD_FAIL_CLOSED: "true"
+      GUARD_TRUSTED_PROXY_HOPS: "${GUARD_TRUSTED_PROXY_HOPS:-0}"
+      GUARD_TRUST_LABEL_HEADER: "${GUARD_TRUST_LABEL_HEADER:-false}"
+      GUARD_MAX_BODY_BYTES: "1048576"
     depends_on:
-      - redis
-      - backend
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     volumes:
-      - ./data:/app/data    # Bind mount: JSONL dataset accessible from host
-      - ./ml_pipeline/models:/app/models
+      - ./data:/app/data
+      # Read-only: models are executable content (pickle). Mounting them
+      # writable would let anything with container access swap in a payload
+      # that runs on the next load.
+      - ./ml_pipeline/models:/app/models:ro
+    networks: [edge]
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1g
+
+networks:
+  edge:
+    driver: bridge
 
 volumes:
   redis_data:

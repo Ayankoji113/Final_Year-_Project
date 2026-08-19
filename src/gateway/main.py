@@ -1,459 +1,370 @@
-"""
-MicroAPI Guard - API Security Gateway
-Reverse Proxy + Redis Sliding Window + Feature Extraction + ML Inference + JSONL Logging
-Phase 4: Real-time ML Attack Detection (HTTP 403 Blocking)
-"""
+"""MicroAPI Guard - security gateway.
 
+Sits in front of ANY HTTP backend as a reverse proxy. It knows nothing about the
+backend's routes, framework or language; every decision is made from the request
+itself plus per-client behavioural state in Redis.
+
+Request lifecycle:
+    read (capped) -> identify client -> rate state -> detect -> block | forward
+                  -> log a numeric feature vector (never a raw body)
+"""
+import asyncio
+import hashlib
+import json
 import os
 import sys
 import time
-import json
-import pickle
-import asyncio
-import datetime
-from datetime import datetime as dt
+from contextlib import asynccontextmanager
 
 import httpx
-import numpy as np
-import pandas as pd
-import joblib
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request, Response
+from starlette.concurrency import run_in_threadpool
 
-# ======================== CONFIG ========================
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-BACKEND_URL          = os.getenv("BACKEND_URL", "http://localhost:8000")
-REDIS_URL            = os.getenv("REDIS_URL", "redis://localhost:6379")
-JSONL_DIR            = os.getenv("JSONL_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
-JSONL_FILE           = os.path.join(JSONL_DIR, "api_traffic_features.jsonl")
-MODELS_DIR           = os.getenv("MODELS_DIR", "/app/models")
-SLIDING_WINDOW_SECS  = 60
-# True = block attacks (production), False = log only (calibration/training)
-ENFORCEMENT_MODE     = os.getenv("ML_ENFORCEMENT_MODE", "true").lower() == "true"
+from common import config, features           # noqa: E402
+from common import normalize as nz            # noqa: E402
+from gateway.detector import BLOCK, Detector  # noqa: E402
+from gateway.ratelimit import RateLimiter     # noqa: E402
 
-# ======================== NUMPY AUTOENCODER (must match train.py exactly) ========================
+# Headers that must not be relayed: they describe THIS hop's connection.
+HOP_BY_HOP = {
+    "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+    "te", "trailers", "transfer-encoding", "upgrade", "content-length", "host",
+}
+# Additionally stripped from the RESPONSE: our own server generates these, and
+# relaying the upstream copy emits the header twice.
+RESPONSE_STRIP = HOP_BY_HOP | {"date", "server"}
+# Never written to the event log in any form.
+SENSITIVE_HEADERS = {"authorization", "cookie", "proxy-authorization", "x-api-key"}
 
-class NumpyAutoencoder:
-    """Pure-NumPy autoencoder — identical class needed to unpickle autoencoder.pkl"""
-    def __init__(self, input_dim, hidden=64, bottleneck=16, lr=0.003, epochs=80, batch=256):
-        self.lr, self.epochs, self.batch = lr, epochs, batch
-        def xavier(a, b):
-            return np.random.randn(a, b) * np.sqrt(2.0 / (a + b))
-        self.W1, self.b1 = xavier(input_dim, hidden),    np.zeros(hidden)
-        self.W2, self.b2 = xavier(hidden,    bottleneck), np.zeros(bottleneck)
-        self.W3, self.b3 = xavier(bottleneck, hidden),   np.zeros(hidden)
-        self.W4, self.b4 = xavier(hidden,    input_dim),  np.zeros(input_dim)
+ADMIN_PREFIX = "/__guard"   # namespaced so it cannot shadow a backend route
 
-    @staticmethod
-    def relu(x):   return np.maximum(0.0, x)
-    @staticmethod
-    def relu_d(x): return (x > 0).astype(float)
-
-    def _fwd(self, X):
-        h1 = self.relu(X  @ self.W1 + self.b1)
-        h2 = self.relu(h1 @ self.W2 + self.b2)
-        h3 = self.relu(h2 @ self.W3 + self.b3)
-        return h3 @ self.W4 + self.b4, h3, h2, h1
-
-    def fit(self, X): pass  # Already trained
-
-    def score(self, X):
-        out, _, _, _ = self._fwd(X)
-        return ((X - out) ** 2).mean(axis=1)
-
-import sys
-sys.modules['__main__'].NumpyAutoencoder = NumpyAutoencoder
-
-# ======================== ML INFERENCE ENGINE ========================
-
-# Globals — loaded at startup
-_preprocessor    = None
-_iforest         = None
-_autoencoder     = None
-_meta_lr         = None
-_hgb             = None
-_et              = None
-_rf              = None
-_threshold_meta  = None   # {'best_source': 'hist_gradient_boost', 'best_threshold': 0.715}
-
-# Feature column names (must match train.py exactly)
-NUMERICAL_COLS   = ['request_body_size', 'sliding_window_count']
-CATEGORICAL_COLS = ['http_method', 'http_path']
-ENG_NUMERICAL    = NUMERICAL_COLS + [
-    'log_body_size', 'log_window',
-    'is_large_body', 'is_high_rate',
-    'path_has_admin', 'path_has_sqli', 'path_has_traverse',
-    'path_depth', 'is_post_large',
-]
-
-def _engineer(row: dict) -> pd.DataFrame:
-    """Apply same feature engineering as train.py"""
-    df = pd.DataFrame([{
-        'request_body_size':    float(row.get('request_body_size', 0)),
-        'sliding_window_count': float(row.get('sliding_window_count', 0)),
-        'http_method':          str(row.get('http_method', 'GET')),
-        'http_path':            str(row.get('http_path', '/')),
-    }])
-
-    df['log_body_size']     = np.log1p(df['request_body_size'])
-    df['log_window']        = np.log1p(df['sliding_window_count'])
-    df['is_large_body']     = (df['request_body_size'] > 1000).astype(float)
-    df['is_high_rate']      = (df['sliding_window_count'] > 15).astype(float)
-    path = df['http_path'].astype(str).str.lower()
-    df['path_has_admin']    = path.str.contains('admin|root|config', regex=True).astype(float)
-    df['path_has_sqli']     = path.str.contains(r"'|--|union|select|drop", regex=True).astype(float)
-    df['path_has_traverse'] = path.str.contains(r'\.\./|etc/passwd|\.env|\.git', regex=True).astype(float)
-    df['path_depth']        = df['http_path'].astype(str).str.count('/').clip(0, 10).astype(float)
-    df['is_post_large']     = ((df['http_method'].astype(str).str.upper() == 'POST') &
-                               (df['request_body_size'] > 500)).astype(float)
-    return df
+detector = Detector()
+state = {"redis": None, "http": None, "limiter": None, "queue": None,
+         "writer": None, "started": 0.0}
+stats = {"total": 0, "allowed": 0, "blocked": 0, "by_layer": {}}
 
 
-def _load_models():
-    """Load all trained models from MODELS_DIR at startup."""
-    global _preprocessor, _iforest, _autoencoder, _meta_lr
-    global _hgb, _et, _rf, _threshold_meta
+# ── client identity ───────────────────────────────────────────────────────────
 
-    if not os.path.exists(MODELS_DIR):
-        print(f"[ML] WARNING: Models dir not found: {MODELS_DIR}")
-        print(f"[ML] Running in LOGGING-ONLY mode (no blocking)")
-        return False
+def client_id(request: Request) -> str:
+    """Resolve the client address.
 
-    try:
-        _preprocessor   = joblib.load(os.path.join(MODELS_DIR, 'preprocessor.pkl'))
-        _iforest        = joblib.load(os.path.join(MODELS_DIR, 'isolation_forest.pkl'))
-        _hgb            = joblib.load(os.path.join(MODELS_DIR, 'hgb.pkl'))
-        _et             = joblib.load(os.path.join(MODELS_DIR, 'extra_trees.pkl'))
-        _rf             = joblib.load(os.path.join(MODELS_DIR, 'rf_direct.pkl'))
-        _meta_lr        = joblib.load(os.path.join(MODELS_DIR, 'meta_learner.pkl'))
-
-        with open(os.path.join(MODELS_DIR, 'autoencoder.pkl'), 'rb') as f:
-            _autoencoder = pickle.load(f)
-
-        with open(os.path.join(MODELS_DIR, 'threshold_meta.pkl'), 'rb') as f:
-            _threshold_meta = pickle.load(f)
-
-        print(f"[ML] All models loaded from {MODELS_DIR}")
-        print(f"[ML] Best source: {_threshold_meta['best_source']}")
-        print(f"[ML] Threshold:   {_threshold_meta['best_threshold']:.3f}")
-        print(f"[ML] Enforcement: {'BLOCKING' if ENFORCEMENT_MODE else 'LOG ONLY'}")
-        return True
-
-    except Exception as e:
-        print(f"[ML] ERROR loading models: {e}")
-        return False
-
-
-def _minmax_score(arr, lo=0.0, hi=1.0):
-    return float(np.clip((arr - lo) / (hi - lo + 1e-9), 0, 1))
-
-
-def predict(raw_features: dict) -> dict:
+    X-Forwarded-For is client-controlled unless a proxy you trust wrote it, so
+    trusting it blindly makes every per-IP control spoofable by adding one
+    header. We only read it when the operator declares how many trusted hops we
+    sit behind, and we take the entry that hop actually appended.
     """
-    Run ML inference on a single request.
-    Returns: {'label': 'attack'/'normal', 'score': float, 'scores': dict}
-    """
-    if _preprocessor is None:
-        return {'label': 'normal', 'score': 0.0, 'scores': {}, 'blocked': False}
+    peer = request.client.host if request.client else "unknown"
+    hops = config.TRUSTED_PROXY_HOPS
+    if hops <= 0:
+        return peer
+    xff = request.headers.get("x-forwarded-for")
+    if not xff:
+        return peer
+    chain = [p.strip() for p in xff.split(",") if p.strip()]
+    if not chain:
+        return peer
+    idx = len(chain) - hops
+    return chain[idx] if 0 <= idx < len(chain) else chain[0]
+
+
+def hash_client(cid: str) -> str:
+    """Pseudonymise the client address before it reaches disk."""
+    return hashlib.sha256(cid.encode("utf-8", "ignore")).hexdigest()[:16]
+
+
+# ── lifespan ──────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    os.makedirs(config.DATA_DIR, exist_ok=True)
 
     try:
-        # 1. Feature engineering
-        df_eng = _engineer(raw_features)
-
-        # 2. Preprocess (StandardScaler + OneHotEncoder)
-        X = _preprocessor.transform(df_eng)
-
-        # 3. Individual model scores
-        if_score  = float(-_iforest.decision_function(X)[0])
-        ae_score  = float(_autoencoder.score(X)[0])
-
-        # Normalize unsupervised scores to [0,1]
-        if_norm   = _minmax_score(if_score, -0.1, 0.3)
-        ae_norm   = _minmax_score(ae_score,  0.0, 2.0)
-
-        # Meta-LR on anomaly scores
-        meta_score = float(_meta_lr.predict_proba(
-            np.array([[if_norm, ae_norm]])
-        )[0, 1])
-
-        # Supervised models
-        hgb_score = float(_hgb.predict_proba(X)[0, 1])
-        et_score  = float(_et.predict_proba(X)[0, 1])
-        rf_score  = float(_rf.predict_proba(X)[0, 1])
-
-        # Weighted fusion (same weights as training)
-        fusion_score = (0.40 * hgb_score +
-                        0.20 * et_score  +
-                        0.20 * rf_score  +
-                        0.10 * if_norm   +
-                        0.05 * ae_norm   +
-                        0.05 * meta_score)
-
-        # Select best source (from training)
-        best_src   = _threshold_meta['best_source']
-        threshold  = _threshold_meta['best_threshold']
-
-        score_map = {
-            'isolation_forest':      if_norm,
-            'autoencoder':           ae_norm,
-            'meta_lr':               meta_score,
-            'hist_gradient_boost':   hgb_score,
-            'extra_trees':           et_score,
-            'random_forest':         rf_score,
-            'fusion':                fusion_score,
-        }
-        final_score = score_map.get(best_src, hgb_score)
-        is_attack   = final_score >= threshold
-
-        return {
-            'label':   'attack' if is_attack else 'normal',
-            'score':   round(final_score, 4),
-            'scores':  {k: round(v, 4) for k, v in score_map.items()},
-            'blocked': is_attack and ENFORCEMENT_MODE,
-        }
-
+        state["redis"] = aioredis.from_url(config.REDIS_URL, decode_responses=True)
+        await state["redis"].ping()
+        print(f"[gateway] redis connected: {config.REDIS_URL}")
     except Exception as e:
-        print(f"[ML] Inference error: {e}")
-        return {'label': 'normal', 'score': 0.0, 'scores': {}, 'blocked': False}
+        print(f"[gateway] redis unavailable ({e}) - rate limiting DEGRADED")
+        state["redis"] = None
+
+    state["limiter"] = RateLimiter(state["redis"])
+    # One pooled client for the process. Building an AsyncClient per request
+    # throws away connection reuse and adds a full TCP handshake to every call.
+    state["http"] = httpx.AsyncClient(
+        timeout=config.UPSTREAM_TIMEOUT,
+        limits=httpx.Limits(max_connections=200, max_keepalive_connections=50),
+        follow_redirects=False,
+    )
+    state["queue"] = asyncio.Queue(maxsize=10_000)
+    state["writer"] = asyncio.create_task(_log_writer())
+    state["started"] = time.time()
+
+    ok = detector.load()
+    if not ok and config.ENFORCING:
+        # Starting an enforcing gateway with no anomaly models would advertise
+        # protection it cannot deliver. Misconfiguration must be loud.
+        raise RuntimeError(
+            f"GUARD_MODE=enforce but models could not be loaded from "
+            f"{config.MODELS_DIR}. Train them, mount them, or start with "
+            f"GUARD_MODE=monitor."
+        )
+
+    print(f"[gateway] mode={config.MODE} models={'loaded' if ok else 'ABSENT'} "
+          f"baseline={'ready' if detector.baseline.ready else 'uncalibrated'}")
+    print(f"[gateway] upstream={config.BACKEND_URL}")
+    yield
+
+    if state["writer"]:
+        state["writer"].cancel()
+    if state["http"]:
+        await state["http"].aclose()
+    if state["redis"]:
+        await state["redis"].aclose()
 
 
-# ======================== APP INIT ========================
-
-app = FastAPI(title="MicroAPI Guard - API Gateway", version="2.0.0")
-
-redis_client: aioredis.Redis = None
-log_queue: asyncio.Queue     = None
-log_task                     = None
-ml_loaded                    = False
+app = FastAPI(title="MicroAPI Guard", version="3.0.0", lifespan=lifespan,
+              docs_url=None, redoc_url=None, openapi_url=None)
 
 
-# ======================== STARTUP / SHUTDOWN ========================
+# ── event log ─────────────────────────────────────────────────────────────────
 
-@app.on_event("startup")
-async def startup():
-    global redis_client, log_queue, log_task, ml_loaded
-
-    # Redis
-    redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
-    try:
-        await redis_client.ping()
-        print(f"[GATEWAY] Redis connected at {REDIS_URL}")
-    except Exception as e:
-        print(f"[GATEWAY] Redis unavailable: {e} — sliding window disabled")
-        redis_client = None
-
-    # Data dir
-    os.makedirs(JSONL_DIR, exist_ok=True)
-
-    # JSONL writer
-    log_queue = asyncio.Queue()
-    log_task  = asyncio.create_task(jsonl_writer())
-
-    # ML Models
-    ml_loaded = _load_models()
-
-    print(f"[GATEWAY] Started → backend: {BACKEND_URL}")
-    print(f"[GATEWAY] ML inference: {'ACTIVE' if ml_loaded else 'DISABLED'}")
-    print(f"[GATEWAY] Mode: {'ENFORCEMENT (blocking)' if ENFORCEMENT_MODE and ml_loaded else 'LOG ONLY'}")
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    if log_task:
-        log_task.cancel()
-    if redis_client:
-        await redis_client.close()
-
-
-# ======================== JSONL ASYNC WRITER ========================
-
-async def jsonl_writer():
+async def _log_writer():
+    """Batched append-only writer. Runs off the request path so disk latency
+    never shows up in the client's response time."""
+    buf = []
     while True:
         try:
-            record = await log_queue.get()
-            with open(JSONL_FILE, "a") as f:
-                f.write(json.dumps(record) + "\n")
-            log_queue.task_done()
+            rec = await asyncio.wait_for(state["queue"].get(), timeout=1.0)
+            buf.append(rec)
+        except asyncio.TimeoutError:
+            pass
         except asyncio.CancelledError:
             break
-        except Exception as e:
-            print(f"[LOGGER] Write error: {e}")
+        except Exception:
+            continue
+
+        if buf and (len(buf) >= 50 or state["queue"].empty()):
+            try:
+                with open(config.EVENT_LOG, "a", encoding="utf-8") as fh:
+                    for r in buf:
+                        fh.write(json.dumps(r, separators=(",", ":")) + "\n")
+            except Exception as e:
+                print(f"[gateway] log write failed: {e}")
+            buf.clear()
 
 
-# ======================== REDIS SLIDING WINDOW ========================
-
-async def get_sliding_window_count(client_ip: str) -> int:
-    if not redis_client:
-        return 0
-    now = time.time()
-    key = f"sw:{client_ip}"
+def enqueue(rec: dict):
+    q = state["queue"]
+    if q is None:
+        return
     try:
-        pipe = redis_client.pipeline()
-        pipe.zadd(key, {str(now): now})
-        pipe.zremrangebyscore(key, 0, now - SLIDING_WINDOW_SECS)
-        pipe.zcard(key)
-        pipe.expire(key, SLIDING_WINDOW_SECS * 2)
-        results = await pipe.execute()
-        return results[2]
-    except Exception as e:
-        print(f"[REDIS] Error: {e}")
-        return 0
+        q.put_nowait(rec)
+    except asyncio.QueueFull:
+        pass   # shed logging before shedding traffic
 
 
-# ======================== HEALTH + STATUS ========================
+# ── admin endpoints ───────────────────────────────────────────────────────────
 
-@app.get("/health")
+@app.get(ADMIN_PREFIX + "/health")
 async def health():
+    redis_ok = False
+    if state["redis"]:
+        try:
+            redis_ok = bool(await state["redis"].ping())
+        except Exception:
+            redis_ok = False
     return {
-        "status":      "healthy",
-        "service":     "gateway-microservices",
-        "timestamp":   dt.now().isoformat(),
-        "ml_loaded":   ml_loaded,
-        "ml_mode":     "enforcement" if ENFORCEMENT_MODE else "logging",
-        "ml_model":    _threshold_meta.get('best_source') if _threshold_meta else None,
-        "ml_threshold":_threshold_meta.get('best_threshold') if _threshold_meta else None,
+        "status": "healthy",
+        "mode": config.MODE,
+        # Makes the L1/L4 enforcement split explicit: under enforce-l1 the
+        # deterministic layers block while the statistical layer only observes.
+        "enforcing_rules": config.ENFORCING,
+        "enforcing_ml": config.ML_ENFORCING,
+        "models_loaded": detector.loaded,
+        "calibrated": detector.baseline.ready,
+        "calibration_samples": detector.baseline.n_samples,
+        "redis": redis_ok,
+        "threshold": detector.threshold,
+        "uptime_s": round(time.time() - state["started"], 1),
     }
 
 
-@app.get("/")
-async def root():
-    return {
-        "service": "MicroAPI Guard - API Gateway v2.0",
-        "backend": BACKEND_URL,
-        "redis":   REDIS_URL,
-        "ml":      "active" if ml_loaded else "disabled",
-        "mode":    "enforcement" if ENFORCEMENT_MODE and ml_loaded else "log-only",
-        "timestamp": dt.now().isoformat(),
+@app.get(ADMIN_PREFIX + "/stats")
+async def get_stats():
+    return {**stats, "trained_at": (detector.meta or {}).get("trained_at")}
+
+
+@app.post(ADMIN_PREFIX + "/reload")
+async def reload_models():
+    """Hot-reload models and baseline after retraining or recalibration."""
+    ok = detector.load()
+    return {"reloaded": ok, "calibrated": detector.baseline.ready}
+
+
+# ── proxy ─────────────────────────────────────────────────────────────────────
+
+async def read_body_capped(request: Request):
+    """Read the body but refuse to buffer more than the cap.
+
+    `await request.body()` is unbounded: a single large POST can pin the whole
+    body in memory, and the old generator already sent 200 KB bodies.
+    """
+    total, chunks = 0, []
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > config.MAX_BODY_BYTES:
+            return None, total
+        chunks.append(chunk)
+    return b"".join(chunks), total
+
+
+@app.api_route("/{full_path:path}",
+               methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+async def proxy(request: Request, full_path: str):
+    t0 = time.perf_counter()
+    cid = client_id(request)
+    path = request.url.path
+    query = request.url.query or ""
+    template = nz.path_template(path)
+
+    body, size = await read_body_capped(request)
+    if body is None:
+        return _json(413, {"error": "Request body too large",
+                           "limit_bytes": config.MAX_BODY_BYTES})
+
+    rate = await state["limiter"].check(cid, template)
+
+    ev = {
+        "method": request.method,
+        "path": path,
+        "query": query,
+        "body": body[:config.BODY_INSPECT_BYTES].decode("utf-8", "ignore"),
+        "body_size": size,
+        "template": template,
+        "content_type": request.headers.get("content-type", ""),
+        "user_agent": request.headers.get("user-agent", ""),
+        "header_count": len(request.headers),
+        "has_referer": bool(request.headers.get("referer")),
+        "has_auth": bool(request.headers.get("authorization")),
+        "window_count": rate.window_count,
+        "burst_count": rate.burst_count,
+        "window_distinct": rate.distinct_paths,
+        "rate_limited": rate.limited,
+        "rate_reason": rate.reason,
     }
 
+    # Tree ensembles and the AE are synchronous CPU work. Running them inline
+    # would block the event loop for every other in-flight request.
+    decision = await run_in_threadpool(detector.inspect, ev)
 
-# ======================== MAIN PROXY ROUTE ========================
+    # L1 verdicts (signatures, rate limits) are deterministic and enforced in
+    # both enforce modes. L4 verdicts are statistical and only enforced once the
+    # operator has promoted the deployment to full `enforce` - see config.MODE.
+    ml_verdict = decision.layer in ("L4-meta", "L-error")
+    enforced = decision.action == BLOCK and config.ENFORCING and (
+        config.ML_ENFORCING or not ml_verdict)
+    stats["total"] += 1
+    if enforced:
+        stats["blocked"] += 1
+        stats["by_layer"][decision.layer] = stats["by_layer"].get(decision.layer, 0) + 1
+    else:
+        stats["allowed"] += 1
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-async def gateway_proxy(request: Request, path: str):
+    label = None
+    if config.TRUST_LABEL_HEADER:
+        # Lab-only. In production this header is ignored, because whoever can
+        # set it can hand-label the corpus the next model trains on.
+        label = request.headers.get("x-ground-truth")
 
-    start_time   = time.time()
-    client_ip    = request.client.host if request.client else "unknown"
-    ground_truth = request.headers.get("x-ground-truth", "unknown")
-    request_body = await request.body()
+    def log(status, latency_ms, detect_ms):
+        enqueue({
+            "ts": round(time.time(), 3),
+            "client": hash_client(cid),
+            "method": request.method,
+            "template": template,
+            "path_len": len(path),
+            "body_size": size,
+            "status": status,
+            # Raw rate counters are logged as METADATA, not as model features.
+            # Layer 1 owns rate policy; the trainer needs these to reconstruct
+            # L1's continuous score, but they must not reach L2/L3.
+            "window_count": rate.window_count,
+            "burst_count": rate.burst_count,
+            "latency_ms": round(latency_ms, 3),
+            "detect_ms": round(detect_ms, 3),
+            "action": decision.action,
+            "enforced": enforced,
+            "layer": decision.layer,
+            "reason": decision.reason[:200],
+            "probability": round(decision.probability, 4),
+            "scores": decision.scores,
+            "rule_hits": decision.rule_hits,
+            "categories": decision.categories,
+            "degraded": decision.degraded or rate.degraded,
+            # The numeric feature vector IS the training data. Raw bodies are
+            # never written, so login passwords cannot leak through the log.
+            "features": _feature_snapshot(ev),
+            "label": label,
+        })
 
-    # Step 1: Redis sliding window
-    sliding_window_count = await get_sliding_window_count(client_ip)
+    detect_ms = (time.perf_counter() - t0) * 1000
 
-    # ── Step 2: ML INFERENCE (before forwarding) ─────────────────────
-    full_path = request.url.path
-    if request.url.query:
-        full_path += f"?{request.url.query}"
+    if enforced:
+        log(403, detect_ms, detect_ms)
+        return _json(403, {
+            "error": "Request blocked by MicroAPI Guard",
+            "layer": decision.layer,
+            "reason": decision.reason,
+            "categories": decision.categories,
+        }, extra={"X-Guard-Action": "block", "X-Guard-Layer": decision.layer})
 
-    raw_features = {
-        'request_body_size':    len(request_body),
-        'sliding_window_count': sliding_window_count,
-        'http_method':          request.method,
-        'http_path':            full_path,
-    }
+    # ── forward ──────────────────────────────────────────────────────────────
+    fwd = {k: v for k, v in request.headers.items() if k.lower() not in HOP_BY_HOP}
+    fwd.pop("x-ground-truth", None)
+    fwd["x-forwarded-for"] = cid
+    fwd["x-forwarded-proto"] = request.url.scheme
+    fwd["x-guard-request-id"] = hashlib.sha256(
+        f"{t0}{cid}{path}".encode()).hexdigest()[:16]
 
-    ml_result = predict(raw_features)
-
-    # ── Step 3: BLOCK if attack detected ─────────────────────────────
-    if ml_result['blocked']:
-        duration_ms = (time.time() - start_time) * 1000
-        print(
-            f"[GATEWAY] 🚫 BLOCKED  {request.method:6s} /{path:30s} "
-            f"score={ml_result['score']:.3f} | "
-            f"{duration_ms:.1f}ms | window={sliding_window_count}"
-        )
-        # Log blocked request
-        log_record = {
-            "timestamp":            time.time(),
-            "client_ip":            client_ip,
-            "http_method":          request.method,
-            "http_path":            full_path,
-            "request_body_size":    len(request_body),
-            "response_status":      403,
-            "request_duration_ms":  round(duration_ms, 2),
-            "sliding_window_count": sliding_window_count,
-            "label":                ground_truth,
-            "ml_label":             "attack",
-            "ml_score":             ml_result['score'],
-            "ml_scores":            ml_result['scores'],
-            "blocked":              True,
-        }
-        await log_queue.put(log_record)
-
-        return Response(
-            content=json.dumps({
-                "error":   "Request blocked by MicroAPI Guard",
-                "reason":  "Anomaly detected by ML security engine",
-                "score":   ml_result['score'],
-                "request": f"{request.method} {full_path}",
-            }),
-            status_code=403,
-            media_type="application/json",
-        )
-
-    # ── Step 4: Forward to backend (normal traffic) ───────────────────
-    target_url = f"{BACKEND_URL}/{path}"
-    headers    = dict(request.headers)
-    headers.pop("host", None)
-    headers.pop("x-ground-truth", None)
-
+    url = config.BACKEND_URL.rstrip("/") + path
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.request(
-                method=request.method,
-                url=target_url,
-                headers=headers,
-                content=request_body,
-                params=dict(request.query_params),
-            )
-    except httpx.ConnectError:
-        duration_ms = (time.time() - start_time) * 1000
-        return Response(
-            content=json.dumps({"error": "Backend service unavailable"}),
-            status_code=503,
-            media_type="application/json",
+        upstream = await state["http"].request(
+            request.method, url, headers=fwd, content=body,
+            params=dict(request.query_params) or None,
         )
+    except httpx.TimeoutException:
+        log(504, (time.perf_counter() - t0) * 1000, detect_ms)
+        return _json(504, {"error": "Backend timed out"})
+    except httpx.RequestError:
+        log(502, (time.perf_counter() - t0) * 1000, detect_ms)
+        return _json(502, {"error": "Backend unavailable"})
 
-    duration_ms = (time.time() - start_time) * 1000
+    latency_ms = (time.perf_counter() - t0) * 1000
+    log(upstream.status_code, latency_ms, detect_ms)
 
-    # ── Step 5: Log to JSONL ──────────────────────────────────────────
-    log_record = {
-        "timestamp":            time.time(),
-        "client_ip":            client_ip,
-        "http_method":          request.method,
-        "http_path":            full_path,
-        "request_body_size":    len(request_body),
-        "response_status":      response.status_code,
-        "request_duration_ms":  round(duration_ms, 2),
-        "sliding_window_count": sliding_window_count,
-        "label":                ground_truth,
-        "ml_label":             ml_result['label'],
-        "ml_score":             ml_result['score'],
-        "ml_scores":            ml_result['scores'],
-        "blocked":              False,
-    }
-    await log_queue.put(log_record)
+    out = {k: v for k, v in upstream.headers.items() if k.lower() not in RESPONSE_STRIP}
+    out["X-Guard-Action"] = "allow"
+    if decision.action == BLOCK and not enforced:
+        # monitor mode, or an ML verdict under enforce-l1
+        out["X-Guard-Would-Block"] = decision.layer
+    return Response(content=upstream.content, status_code=upstream.status_code,
+                    headers=out)
 
-    # ── Step 6: Console log ───────────────────────────────────────────
-    icon = "✅" if response.status_code < 400 else "⚠️"
-    ml_icon = "🔵" if ml_result['label'] == 'normal' else "🟡"
-    print(
-        f"[GATEWAY] {icon}{ml_icon} {request.method:6s} /{path:25s} "
-        f"→ {response.status_code} | {duration_ms:6.1f}ms | "
-        f"score={ml_result['score']:.3f} | window={sliding_window_count}"
-    )
 
-    # ── Step 7: Return response ───────────────────────────────────────
-    excluded = {"content-encoding", "content-length", "transfer-encoding", "connection"}
-    resp_headers = {k: v for k, v in response.headers.items()
-                    if k.lower() not in excluded}
+def _feature_snapshot(ev: dict) -> dict:
+    try:
+        f = features.extract(ev, detector.baseline)
+        return {k: round(float(v), 5) for k, v in f.items() if not k.startswith("_")}
+    except Exception:
+        return {}
 
-    return Response(
-        content=response.content,
-        status_code=response.status_code,
-        headers=resp_headers,
-        media_type=response.headers.get("content-type"),
-    )
+
+def _json(status: int, payload: dict, extra: dict = None) -> Response:
+    return Response(content=json.dumps(payload), status_code=status,
+                    media_type="application/json", headers=extra or {})
 
 
 if __name__ == "__main__":

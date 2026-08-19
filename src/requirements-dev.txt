@@ -1,0 +1,2 @@
+# Test/development tooling. Not installed into the runtime images.
+pytest==8.3.3
