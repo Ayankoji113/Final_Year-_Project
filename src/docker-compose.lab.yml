@@ -32,23 +32,3 @@ services:
   backend:
     ports:
       - "127.0.0.1:8000:8000"
-
-  # Monitoring dashboard. Bound to loopback only: it renders security events
-  # and must not be exposed. Anything internet-facing needs authentication in
-  # front of it first.
-  dashboard:
-    build:
-      context: .
-      dockerfile: dashboard/Dockerfile
-    container_name: microapi-dashboard
-    ports:
-      - "127.0.0.1:8501:8501"
-    environment:
-      DATA_DIR: /app/data
-      MODELS_DIR: /app/models
-    volumes:
-      - ./data:/app/data:ro
-      - ./ml_pipeline/models:/app/models:ro
-    networks: [edge]
-    restart: unless-stopped
-    security_opt: ["no-new-privileges:true"]

@@ -37,37 +37,37 @@
       "fn": 163.0
     },
     "stack": {
-      "accuracy": 0.9520451339915373,
-      "precision": 0.9610951008645533,
-      "recall": 0.898921832884097,
-      "f1": 0.9289693593314763,
-      "fpr": 0.019494584837545126,
-      "fnr": 0.10107816711590296,
-      "tp": 667.0,
-      "tn": 1358.0,
-      "fp": 27.0,
-      "fn": 75.0
+      "accuracy": 0.9938881053126469,
+      "precision": 0.9827814569536424,
+      "recall": 1.0,
+      "f1": 0.991315965263861,
+      "fpr": 0.009386281588447653,
+      "fnr": 0.0,
+      "tp": 742.0,
+      "tn": 1372.0,
+      "fp": 13.0,
+      "fn": 0.0
     }
   },
   "mcnemar": {
     "stack_vs_rate": {
-      "n01": 429,
-      "n10": 43,
-      "p": 2.884188141240363e-70,
+      "n01": 488,
+      "n10": 13,
+      "p": 1.5643432557344695e-99,
       "method": "chi-square with continuity correction",
       "significant": true
     },
     "stack_vs_iforest": {
-      "n01": 492,
-      "n10": 20,
-      "p": 3.1354899287937788e-96,
+      "n01": 565,
+      "n10": 4,
+      "p": 7.103656601818342e-122,
       "method": "chi-square with continuity correction",
       "significant": true
     },
     "stack_vs_autoencoder": {
-      "n01": 88,
-      "n10": 17,
-      "p": 8.414824849078409e-12,
+      "n01": 163,
+      "n10": 3,
+      "p": 5.461505515614816e-35,
       "method": "chi-square with continuity correction",
       "significant": true
     }

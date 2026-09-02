@@ -1,7 +1,7 @@
 {
   "version": 3,
-  "trained_at": "2026-08-19T10:05:30",
-  "seed": 42,
+  "trained_at": "2026-08-21T03:47:26",
+  "seed": 10,
   "feature_names": [
     "body_log_size",
     "body_entropy",
@@ -38,41 +38,49 @@
     "is_write",
     "n_flags"
   ],
-  "threshold": 0.6850000000000002,
-  "if_lo": -0.12966203523536735,
-  "if_hi": 0.15879168714530104,
-  "ae_lo": 3.949900617173595e-05,
-  "ae_hi": 0.02396909833081252,
+  "threshold": 0.2750000000000001,
+  "if_lo": -0.12992879092159643,
+  "if_hi": 0.16101912500079285,
+  "ae_lo": 1.7848795152676595e-05,
+  "ae_hi": 0.013774176140932095,
   "meta_inputs": [
     "rate",
     "isolation_forest",
     "autoencoder"
   ],
   "pool_sizes": {
-    "base": 3695,
-    "meta": 3611,
-    "val": 2031,
-    "test": 2127
+    "base": 4062,
+    "meta": 3117,
+    "val": 2096,
+    "test": 2106
   },
   "novel_families": [
     "cmdi",
     "exfil",
     "ssti"
   ],
-  "test_metrics": {
-    "accuracy": 0.952,
-    "precision": 0.9611,
-    "recall": 0.8989,
-    "f1": 0.929,
-    "fpr": 0.0195,
-    "fnr": 0.1011,
-    "tp": 667,
-    "tn": 1358,
-    "fp": 27,
-    "fn": 75
+  "hyperparams": {
+    "ae_noise": 0.0,
+    "ae_hidden": 32,
+    "ae_bottleneck": 16,
+    "if_trees": 300,
+    "meta": "hgb"
   },
-  "test_roc_auc": 0.9926,
-  "test_pr_auc": 0.9863,
-  "zero_day_recall": 0.8865,
+  "val_f1": 0.9963,
+  "test_metrics": {
+    "accuracy": 0.9634,
+    "precision": 0.9847,
+    "recall": 0.9059,
+    "f1": 0.9437,
+    "fpr": 0.0072,
+    "fnr": 0.0941,
+    "tp": 645,
+    "tn": 1384,
+    "fp": 10,
+    "fn": 67
+  },
+  "test_roc_auc": 0.9982,
+  "test_pr_auc": 0.9954,
+  "zero_day_recall": 0.7546,
   "unique_feature_ratio": 0.1518
 }

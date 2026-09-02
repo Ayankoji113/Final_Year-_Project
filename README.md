@@ -58,8 +58,6 @@ into the final decision.
 - **Privacy-preserving logging** — the event log stores a numeric feature vector
   and a hashed client id. Raw request bodies are never written to disk.
 - **Graded enforcement** — `enforce-l1` (default), `enforce`, and `monitor`.
-- **Streamlit dashboard** — separates the L4 *decision* from the per-detector
-  *evidence*, so no single detector is mistaken for the decision-maker.
 
 ## Results
 
@@ -112,7 +110,6 @@ test rows:
   no PyTorch dependency; the network is 34→32→12→32→34 trained with Adam and
   early stopping
 - **Traffic generation:** Python standard library only (no Locust required)
-- **Dashboard:** Streamlit
 - **Containerisation:** Docker & Docker Compose
 - **Testing:** pytest (92 tests)
 
@@ -176,12 +173,6 @@ Optional analyses:
 python ml_pipeline/validate.py --seeds 10   # confidence intervals
 python ml_pipeline/compare.py               # baselines + McNemar
 python ml_pipeline/calibrate.py             # adapt to a new backend
-```
-
-Dashboard:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.lab.yml up -d dashboard
-# http://localhost:8501
 ```
 
 ## Configuration
@@ -305,7 +296,6 @@ Stated plainly, because they matter for how this should be deployed.
 | Dataset generation | Complete — 35,496 labelled events |
 | ML training & stacking ensemble | Complete — leakage-free, session-grouped splits |
 | Real-time inference | Complete — deployed, `enforce-l1` |
-| Dashboard | Complete |
 | Statistical validation | Complete — 10-seed CIs, McNemar |
 | Calibration | Implemented; refuses unsafe windows by design |
 | Validation on real/public traffic | **Not done** |
@@ -318,7 +308,6 @@ Stated plainly, because they matter for how this should be deployed.
 | `src/gateway/` | Reverse proxy, rate limiter, detection pipeline |
 | `src/ml_pipeline/` | `train.py`, `calibrate.py`, `validate.py`, `compare.py` |
 | `src/traffic_simulator/` | Labelled traffic generation |
-| `src/dashboard/` | Streamlit monitoring UI |
 | `src/tests/` | pytest suite (92 tests) |
 | `src/legacy/` | Previous models/dataset, kept for before-and-after comparison |
 | `docs/` | Design documents and the review script |
