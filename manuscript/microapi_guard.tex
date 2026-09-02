@@ -1,0 +1,661 @@
+%=============================================================================
+% MicroAPI Guard - IEEE conference paper
+%
+% Build:
+%   pdflatex microapi_guard
+%   bibtex   microapi_guard
+%   pdflatex microapi_guard
+%   pdflatex microapi_guard
+%
+% Requires architecture_ieee.pdf in this directory. Convert it once from the
+% SVG (keeps it vector -- do NOT rasterise):
+%   rsvg-convert -f pdf -o architecture_ieee.pdf architecture_ieee.svg
+%   inkscape architecture_ieee.svg --export-filename=architecture_ieee.pdf
+%=============================================================================
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{MicroAPI Guard: A Layered Stacking Ensemble for\\
+Real-Time API Anomaly Detection at the Gateway}
+
+\author{
+\IEEEauthorblockN{Sunny Surendra Nirmal, Tausib Samir Patel, Yash Nandkumar Patil}
+\IEEEauthorblockA{\textit{Department of Information Technology}\\
+\textit{G H Raisoni College of Engineering and Management}\\
+Pune, India}
+\and
+\IEEEauthorblockN{Priyanka Kumbhar}
+\IEEEauthorblockA{\textit{Department of Information Technology}\\
+\textit{G H Raisoni College of Engineering and Management}\\
+Pune, India}
+}
+
+\maketitle
+
+%=============================================================================
+\begin{abstract}
+Application programming interfaces are now the dominant attack surface of
+microservice deployments, yet the two families of defence available to
+practitioners sit at opposite extremes. Signature-based web application
+firewalls are fast and deterministic but blind to attacks they have no rule
+for, while recent learned detectors reach high accuracy at a computational
+cost --- graph neural networks, large language models, distributed tracing
+pipelines --- that a request-path gateway cannot absorb. This paper presents
+MicroAPI~Guard, a backend-agnostic API security gateway that composes four
+detection layers: a deterministic signature and rate-limiting layer, an
+Isolation Forest, a compact autoencoder, and a gradient-boosted meta-learner
+that combines the three anomaly scores into the single blocking decision.
+The design is deliberately modest --- no GPU, no tracing infrastructure, and a
+34-dimensional feature vector computed from one HTTP request --- and the
+deterministic layer short-circuits the model stages entirely, so the common
+case costs 47\,$\mu$s rather than 5.4\,ms. We argue that the evaluation
+protocol matters as much as the architecture, and adopt three constraints that
+are frequently relaxed in this literature: splits are grouped by client
+session rather than by row, the decision threshold is selected on a validation
+pool under a fixed false-positive budget, and three attack families are
+withheld from every training and validation pool so that zero-day recall is a
+measurement rather than an assumption. Over ten seeds the ensemble attains
+$F_1 = 0.957$ (95\% CI $[0.940, 0.976]$) at a false-positive rate of
+$0.0069$, and recalls $0.794$ $[0.668, 0.914]$ of attacks from families it
+never saw in training. McNemar's test confirms the ensemble improves
+significantly on each constituent detector ($p < 10^{-34}$). We report the
+interval rather than our best seed, and discuss why the gap between them is
+the honest result.
+\end{abstract}
+
+\begin{IEEEkeywords}
+API security, anomaly detection, microservices, stacking ensemble, isolation
+forest, autoencoder, zero-day detection, API gateway
+\end{IEEEkeywords}
+
+%=============================================================================
+\section{Introduction}
+
+Microservice architectures decompose an application into services that
+communicate almost exclusively over HTTP APIs. The consequence for security is
+structural: the number of reachable endpoints grows with the number of
+services, and every one of them is a candidate entry point. Public breach
+disclosures involving API misuse at T-Mobile, Optus and Peloton illustrate
+that a single unprotected or under-monitored endpoint is sufficient
+\cite{levi2026mrg}, and the OWASP API Security Top~10 \cite{owasp2023api}
+codifies the resulting threat classes.
+
+Practitioners currently choose between two unsatisfying options. The first is
+the signature-based web application firewall. It is fast, deterministic, and
+explains its verdicts, but it can only recognise attacks somebody has already
+written a rule for --- precisely the wrong property against novel or obfuscated
+payloads \cite{levi2026mrg}. The second is the recent wave of learned
+detectors for microservice environments. These achieve strong accuracy, but
+they do so using graph neural networks over service dependency graphs
+\cite{liu2024lmgd, raeiszadeh2025artfl}, large language models over log streams
+\cite{pedroso2025llm}, dynamic knowledge graphs \cite{moens2026kg}, or
+distributed tracing pipelines \cite{liu2020traceanomaly,
+kohyarnejadfard2022nlp}. Each assumes infrastructure --- a trace collector, a
+metrics pipeline, a GPU --- that is not available on the request path of an
+API gateway, and each measures internal system health rather than the hostility
+of an individual inbound request.
+
+This paper occupies the gap between them. MicroAPI Guard is a reverse-proxy
+gateway that inspects every inbound request and decides, before forwarding,
+whether to allow or block it. Its contributions are:
+
+\begin{enumerate}
+\item \textbf{A layered architecture in which cost tracks certainty.} A
+      deterministic signature and rate-limiting layer runs first and, when it
+      fires, returns without invoking any model. Only requests that survive it
+      pay for the statistical stages. The deterministic path costs 47\,$\mu$s;
+      the full path costs 5.4\,ms.
+\item \textbf{A stacking ensemble whose base detectors are trained only on
+      normal traffic.} An Isolation Forest and a compact autoencoder are fit on
+      a pool of benign requests; a gradient-boosted meta-learner combines their
+      normalised scores with a rate signal. Because the base detectors never
+      see the meta-learner's training pool, the meta-features are
+      out-of-sample by construction and no $k$-fold stacking machinery is
+      required.
+\item \textbf{An evaluation protocol designed against leakage.} Splits are
+      grouped by client session, the threshold is chosen on validation under a
+      1\% false-positive budget, the test pool is read once, and three attack
+      families are withheld from every pool except test.
+\item \textbf{Backend portability through calibration rather than
+      retraining.} Adapting to an unseen backend re-derives the statistical
+      baseline and re-selects the threshold, but deliberately does not update
+      any model weights --- a choice we justify on catastrophic-forgetting and
+      poisoning grounds.
+\item \textbf{Interval reporting.} We report ten-seed confidence intervals
+      rather than a single favourable seed, and we state plainly where the
+      intervals are wide.
+\end{enumerate}
+
+%=============================================================================
+\section{Related Work}
+
+\subsection{Anomaly detection in microservice systems}
+
+The bulk of this literature targets \emph{system health} --- detecting that a
+service has degraded --- rather than request hostility. Barata \emph{et al.}
+survey 117 studies from 2012--2025 and conclude that scaling these
+methods, explaining their verdicts, and running them fast enough to matter
+are all still unsolved \cite{barata2026survey}.
+Statistical approaches such as robust principal component analysis over
+invocation chains \cite{jin2020rpca} operate on service metrics. Deep and
+graph-based methods dominate recent work: LMGD fuses logs and metrics over a
+service dependency graph \cite{liu2024lmgd}, ADmM combines logs, metrics and
+traces with a multi-scale autoencoder that imputes missing metrics
+\cite{zhang2026admm}, and TraceAnomaly learns normal invocation patterns with
+deep Bayesian networks \cite{liu2020traceanomaly}. Others apply NLP to
+distributed traces \cite{kohyarnejadfard2022nlp}, federated learning to avoid
+centralising traffic \cite{raeiszadeh2025artfl}, LLMs and Bayesian networks for
+root-cause analysis \cite{pedroso2025llm}, and dynamic knowledge graphs for
+context-awareness under changing topology \cite{moens2026kg}. Faseeha
+\emph{et al.} note that observability tooling itself imposes overhead that
+lightweight deployments cannot always absorb \cite{faseeha2025observability}.
+
+These systems are more capable than ours along the dimension they optimise.
+They are also, without exception, off the request path: they consume telemetry
+after the fact and cannot block a request before it reaches the backend.
+
+\subsection{Detection at the API gateway}
+
+A smaller body of work places detection at the gateway. Sowmya \emph{et al.}
+apply machine learning directly to HTTP traffic features in a microservice
+setting \cite{sowmya2023api}, which is the closest antecedent to our feature
+design. Huang \emph{et al.} build an intelligent gateway on Envoy and Flink
+with dynamic baselines and frequency monitoring, reporting 98.5\% recall on
+DDoS and path traversal \cite{huang2026gateway}; their data plane and analytics
+plane are separated, so detection is near-real-time rather than inline. Levi
+and Dubin take a complementary route, learning API structure from traffic to
+generate OpenAPI-compliant documentation and flagging structural deviations
+and injection payloads with a deep autoencoder \cite{levi2026mrg}. Markande
+\emph{et al.} monitor SaaS APIs for data leakage using behavioural analytics
+behind a MITM proxy \cite{markande2026saas}, reinforcing that API abuse is not
+reducible to request rate.
+
+\subsection{Isolation forests, autoencoders, and stacking}
+
+Our base detectors are deliberately unremarkable. Isolation Forest
+\cite{liu2008iforest} isolates outliers with random partitioning and has been
+applied to insider-threat detection under severe class imbalance
+\cite{alshehari2023insider}. The pairing of an autoencoder with an Isolation
+Forest is established: Sadaf and Sultana's Auto-IF reaches 95.4\% accuracy on
+NSL-KDD in a fog computing setting \cite{sadaf2020autoif}, and provides the
+direct theoretical basis for combining reconstruction error with isolation
+depth. Stacked generalisation \cite{wolpert1992stacked} is likewise
+long-established, and DSEM-NIDS demonstrates a deep stacking ensemble for
+network intrusion detection across four benchmark datasets
+\cite{mahmoud2025dsem}. Adaptive Defense addresses zero-day detection by
+excluding attack categories from training and retaining them at test time
+\cite{alam2025adaptive} --- the same withholding methodology we adopt in
+Section~\ref{sec:protocol}.
+
+\subsection{Positioning}
+
+We claim no novelty in the individual detectors. What we claim is the
+combination: base detectors trained \emph{only} on normal traffic so that
+stacking requires no out-of-fold machinery; a deterministic layer that
+short-circuits the expensive stages; portability by calibration rather than
+retraining; and an evaluation protocol strict enough that the reported
+zero-day number means what it says. Table~\ref{tab:related} contrasts the
+closest systems.
+
+\begin{table}[t]
+\caption{Positioning against the closest related systems}
+\label{tab:related}
+\centering
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+System & Inline & Input & Novel-family test \\
+\midrule
+LMGD \cite{liu2024lmgd}            & No  & Logs + metrics  & No  \\
+ADmM \cite{zhang2026admm}          & No  & Logs/metrics/traces & No \\
+TraceAnomaly \cite{liu2020traceanomaly} & No & Traces     & No  \\
+Auto-IF \cite{sadaf2020autoif}     & --- & NSL-KDD rows    & No  \\
+DSEM-NIDS \cite{mahmoud2025dsem}   & --- & Flow features   & No  \\
+Adaptive Defense \cite{alam2025adaptive} & --- & Flow features & Yes \\
+Sowmya \emph{et al.} \cite{sowmya2023api} & Yes & HTTP request & No \\
+Huang \emph{et al.} \cite{huang2026gateway} & Near & HTTP request & No \\
+\textbf{MicroAPI Guard}            & \textbf{Yes} & \textbf{HTTP request} & \textbf{Yes} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=============================================================================
+\section{System Architecture}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{architecture_ieee.pdf}
+\caption{MicroAPI Guard request pipeline. Every request is normalised into a
+34-feature vector, screened by a deterministic signature and rate-limiting
+layer, and---only if it survives---scored by two unsupervised base detectors
+whose outputs a gradient-boosted meta-learner combines into the single
+blocking decision. A policy engine determines which layers may enforce.
+Dashed paths are off the request path.}
+\label{fig:architecture}
+\end{figure*}
+
+MicroAPI Guard is an asynchronous reverse proxy. It is the only published
+network entry point; the protected backend and the state store are reachable
+only on an internal network, so a client cannot bypass the controls by
+addressing the backend directly. Figure~\ref{fig:architecture} shows the
+pipeline.
+
+\subsection{Preprocessing}
+
+Each request yields a client identifier, a path template, and a feature
+vector. The path template collapses variable segments
+($\texttt{/orders/8813} \rightarrow \texttt{/orders/\{id\}}$) so that
+per-endpoint statistics are meaningful across identifier values. Request
+bodies are capped at 1\,MiB and only the first 64\,KiB are inspected, bounding
+the work an attacker can compel with a large payload.
+
+\subsection{Layer 1: deterministic screening}
+
+Layer 1 has two halves. The first applies 26 compiled signature rules spanning
+SQL injection, cross-site scripting, path traversal, command injection,
+scanning, server-side template injection, deserialisation and SSRF; 22 are
+blocking and 4 are advisory. The second maintains per-client sliding-window
+counters in Redis --- a 60\,s window, a 5\,s burst window, and a
+HyperLogLog of distinct endpoint templates touched --- in a single pipelined
+round trip.
+
+Two design points matter. First, a blocking rule hit returns immediately: the
+model stages are never invoked, which is why the deterministic path costs
+47\,$\mu$s. Second, the four advisory rules do \emph{not} produce a verdict.
+Their hit count enters the feature vector as \texttt{n\_flags}, so weak
+signature evidence informs the model instead of overriding it.
+
+\subsection{Feature representation}
+
+The 34 features (Table~\ref{tab:features}) describe the \emph{shape} of a
+request, never its identity. This is deliberate and was learned the hard way:
+an earlier iteration that included endpoint identity as a feature degenerated
+into a lookup table that memorised which endpoints had been attacked during
+training and generalised to nothing. The path template is used only to key
+per-endpoint baselines; the raw path never reaches a model.
+
+\begin{table}[t]
+\caption{Feature vector composition (34 features)}
+\label{tab:features}
+\centering
+\footnotesize
+\begin{tabular}{@{}clp{4.3cm}@{}}
+\toprule
+$n$ & Group & Captures \\
+\midrule
+7  & Body shape   & Size, entropy, and character-class ratios of the payload;
+                    one baseline-relative $z$-score \\
+2  & Content      & Presence and declared type of a body \\
+11 & Path shape   & Length, depth, entropy, character-class ratios, dot count,
+                    and the delta between raw and URL-decoded forms \\
+5  & Query string & Parameter count, value lengths, special-character ratio,
+                    decode delta \\
+1  & Behaviour    & Distinct endpoint templates in the client's window \\
+7  & Method       & One-hot HTTP method plus a write indicator \\
+1  & L1 evidence  & Count of advisory signature hits \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three features (\texttt{body\_size\_z}, \texttt{path\_known}, and the rate
+signal) are defined relative to a calibration baseline. The gateway refuses to
+load a model whose recorded feature names disagree with the running code,
+which makes a train/serve feature mismatch a startup failure rather than a
+silent accuracy loss.
+
+\subsection{Layers 2--4: the stacking ensemble}
+
+Let $\mathbf{x} \in \mathbb{R}^{34}$ be the standardised feature vector.
+Layer~2 is an Isolation Forest \cite{liu2008iforest} of 300 trees producing
+$s_{\mathrm{IF}}(\mathbf{x})$, the negated decision function. Layer~3 is a
+fully-connected autoencoder $34 \rightarrow 32 \rightarrow 16 \rightarrow 32
+\rightarrow 34$ implemented directly in NumPy, producing reconstruction error
+$s_{\mathrm{AE}}(\mathbf{x}) = \lVert \mathbf{x} - \hat{\mathbf{x}} \rVert^2_2$.
+Implementing the network without a deep learning framework removes a
+$\sim$2\,GB dependency from a container that must start quickly and holds the
+inference cost to 30\,$\mu$s.
+
+Both scores are min--max normalised to $[0,1]$ using bounds fitted at training
+time. A third input $s_{\mathrm{rate}}$ is the client's window count divided by
+the configured limit, clipped to $[0,1]$. Layer~4 is a histogram-based
+gradient boosting classifier $g$ over these three inputs:
+\begin{equation}
+p = g\!\left(s_{\mathrm{rate}},\; \tilde{s}_{\mathrm{IF}},\;
+              \tilde{s}_{\mathrm{AE}}\right), \qquad
+\text{block} \iff p \ge \tau .
+\end{equation}
+Layer~4 is the only layer that decides. Layers~2 and 3 produce evidence, and
+reporting them separately is what allows an operator to see \emph{why} a
+request was blocked rather than only that it was.
+
+The base detectors are fit exclusively on the \texttt{base} pool, which
+contains only normal requests. The meta-learner is fit on a disjoint
+\texttt{meta} pool. Consequently the meta-features are out-of-sample by
+construction, and the usual $k$-fold out-of-fold stacking procedure is
+unnecessary.
+
+\subsection{Graded enforcement}
+
+The gateway exposes three modes. In \texttt{monitor} nothing is blocked and
+every verdict is logged. In \texttt{enforce-l1}, the default, the
+deterministic layer blocks while Layer~4 verdicts are recorded but not acted
+on. Only \texttt{enforce} allows the model to block.
+
+This gradation is not timidity; it reflects a measurement. Layer~1 is
+deterministic, means the same thing on every backend, and produced no false
+positives in our evaluation. The statistical layers are only as good as the
+traffic they were fitted on: a model trained on our synthetic corpus and then
+exposed to a different client population produced a 13.6\% false-positive rate
+even after threshold calibration. Enforcing what is certain while observing
+what is learned is the defensible default, and promotion to full enforcement
+should follow a retrain on the deployment's own captured traffic.
+
+\subsection{Calibration for an unseen backend}
+
+Deployment in front of a new backend requires no code change --- only an
+upstream URL. Adaptation proceeds by running in \texttt{monitor} mode over a
+window of representative normal traffic, then re-deriving the per-endpoint
+body-size statistics and the global rate statistics, recomputing the three
+baseline-relative features, re-scoring the window with the \emph{existing}
+detectors, and selecting $\tau$ as the percentile of the resulting score
+distribution that meets the operator's false-positive budget.
+
+No model weights are updated. Fine-tuning an autoencoder on a short window
+invites catastrophic forgetting, and any online weight update is a poisoning
+surface: an adversary who can generate traffic during the calibration window
+would teach the model that their traffic is normal. Recalibrating a threshold
+and a baseline bounds that damage in a way that weight updates do not. The
+procedure refuses to proceed when its assumptions fail --- when the window is
+too small, when more than 2\% of it trips a blocking rule, or when the median
+request already scores as anomalous, which would mean the window cannot define
+``normal'' at all.
+
+%=============================================================================
+\section{Evaluation Protocol}
+\label{sec:protocol}
+
+We state the protocol before the results because several of its constraints
+materially lower the numbers we are able to report, and omitting any one of
+them would inflate them.
+
+\subsection{Corpus}
+
+Traffic was generated against a FastAPI backend by a simulator built on the
+Python standard library, with the gateway in monitor mode so that attacks
+appear in the log rather than terminating at a 403. The corpus comprises
+14{,}960 labelled requests from 1{,}061 client sessions across 1{,}503
+endpoint templates: 9{,}224 normal (61.7\%) and 5{,}641 attack (37.7\%).
+Table~\ref{tab:corpus} gives the family breakdown. Labels exist only because a
+laboratory-only configuration flag permits the generator to attach a
+ground-truth header; that flag is a training-data poisoning channel and is
+rejected in any production configuration.
+
+\begin{table}[t]
+\caption{Attack family composition of the corpus}
+\label{tab:corpus}
+\centering
+\footnotesize
+\begin{tabular}{@{}lrlr@{}}
+\toprule
+Family & $n$ & Family & $n$ \\
+\midrule
+flood       & 1{,}981 & traversal & 48 \\
+exfil$^{*}$ & 1{,}669 & cmdi$^{*}$ & 37 \\
+bruteforce  & 1{,}419 & payload   & 19 \\
+scan        & 314     & ssti$^{*}$ & 13 \\
+sqli        & 80      & \multicolumn{2}{l}{} \\
+xss         & 61      & \multicolumn{2}{l}{} \\
+\bottomrule
+\multicolumn{4}{@{}l@{}}{\footnotesize $^{*}$ withheld from all pools except
+\texttt{test}.}
+\end{tabular}
+\end{table}
+
+\subsection{Session-grouped partitioning}
+
+Requests are assigned to \texttt{base}, \texttt{meta}, \texttt{val} and
+\texttt{test} by hashing the client identifier, never the row. A random
+row-level split would allow near-identical requests from a single session to
+straddle the boundary, and inflates every metric. For the seed reported in
+detail the pools hold 4{,}062 / 3{,}117 / 2{,}096 / 2{,}106 requests
+respectively.
+
+\subsection{Withheld families}
+
+Three families --- command injection, data exfiltration and server-side
+template injection --- appear only in \texttt{test}. They are absent from the
+pools used to fit the detectors, fit the meta-learner, and select the
+threshold. Zero-day recall is measured exclusively on these families, which is
+what makes it a measurement of generalisation to unseen attack classes rather
+than a restatement of in-distribution recall. The methodology follows
+\cite{alam2025adaptive}.
+
+\subsection{Threshold selection and test discipline}
+
+$\tau$ is selected on \texttt{val} as the smallest threshold meeting a 1\%
+false-positive budget. Every baseline in Section~\ref{sec:ablation} is granted
+the same budget; without this, a comparison rewards whichever model was
+permitted to be loosest. The \texttt{test} pool is read once, at the end.
+
+\subsection{Layer 1 accounting}
+
+Requests blocked by Layer~1 are excluded from the model stages during
+evaluation, because in deployment they never reach a model, and re-attached
+for the end-to-end figure. Reporting model metrics over requests the model
+never sees would credit the ensemble with the rule engine's work.
+
+%=============================================================================
+\section{Results}
+
+\subsection{Ten-seed performance}
+
+Table~\ref{tab:main} reports mean and 95\% confidence interval over ten seeds.
+Each seed induces a different session partition, so the spread reflects
+sensitivity to which clients land in which pool --- the dominant source of
+variance in a session-grouped design.
+
+\begin{table}[t]
+\caption{End-to-end performance, ten seeds}
+\label{tab:main}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & Mean & 95\% CI \\
+\midrule
+$F_1$              & 0.957  & $[0.940,\ 0.976]$ \\
+Precision          & 0.986  & $[0.982,\ 0.990]$ \\
+Recall             & 0.931  & $[0.900,\ 0.964]$ \\
+False positive rate& 0.0069 & $[0.0052,\ 0.0089]$ \\
+ROC AUC            & 0.989  & $[0.972,\ 0.999]$ \\
+PR AUC             & 0.989  & $[0.973,\ 0.998]$ \\
+Zero-day recall    & 0.794  & $[0.668,\ 0.914]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Precision is both high and stable; the system rarely blocks legitimate
+traffic, and the false-positive rate sits comfortably inside the 1\% budget.
+Recall is lower and more variable. Zero-day recall is the widest interval in
+the table by a wide margin, spanning $[0.668, 0.914]$ across individual seeds
+that range from 0.426 to 1.000.
+
+We consider that spread the most informative number in the paper. With three
+withheld families and a session-grouped split, whether a particular seed
+happens to place diverse exfiltration sessions in \texttt{test} changes the
+result substantially. A single-seed report would have let us claim 1.000
+zero-day recall. That figure would be real, reproducible, and misleading.
+
+\subsection{Ablation and significance}
+\label{sec:ablation}
+
+Table~\ref{tab:ablation} compares the ensemble against each constituent
+detector operating alone under the same false-positive budget on identical
+test requests.
+
+\begin{table}[t]
+\caption{Ablation on identical test requests, single seed}
+\label{tab:ablation}
+\centering
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Detector & Acc. & Prec. & Rec. & $F_1$ & FPR \\
+\midrule
+Rate signal only   & 0.771 & 0.981 & 0.349 & 0.515 & 0.0036 \\
+Isolation Forest   & 0.730 & 0.875 & 0.264 & 0.406 & 0.0202 \\
+Autoencoder        & 0.919 & 0.983 & 0.780 & 0.870 & 0.0072 \\
+\textbf{Stack}     & \textbf{0.994} & 0.983 & \textbf{1.000}
+                   & \textbf{0.991} & 0.0094 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The autoencoder is by far the strongest individual detector; the Isolation
+Forest alone is weak, recalling only 26\% of attacks. Yet the stack improves
+substantially on the autoencoder, which indicates the forest and rate signal
+contribute discriminative information the autoencoder lacks even though
+neither is competitive alone. McNemar's test \cite{mcnemar1947note} on paired
+predictions rejects the null hypothesis of equal error rates against every
+baseline: versus the rate signal $n_{01}=488$, $n_{10}=13$; versus the
+Isolation Forest $n_{01}=565$, $n_{10}=4$; versus the autoencoder $n_{01}=163$,
+$n_{10}=3$; all $p < 10^{-34}$.
+
+Two caveats apply to Table~\ref{tab:ablation}. It is a single-seed result and
+should not be read as an interval. And the recall of 1.000 is a property of
+this partition, not a general claim --- the ten-seed recall in
+Table~\ref{tab:main} is the figure we stand behind.
+
+\subsection{Meta-learner selection}
+
+A search over meta-learner families on seeds disjoint from those used for
+reporting, and with a rotated set of pseudo-novel families so that the real
+withheld families never informed a hyperparameter choice, favoured gradient
+boosting decisively: best objective 0.884 (validation $F_1$ 0.943) against
+0.744 (validation $F_1$ 0.668) for logistic regression. The gain is
+attributable to the decision boundary: the relationship between the three
+normalised scores and hostility is not linearly separable, and a linear
+meta-learner cannot express the region where a moderate forest score combined
+with a moderate reconstruction error indicates an attack while either alone
+does not.
+
+\subsection{Latency}
+
+Table~\ref{tab:latency} reports per-request detection cost, measured
+single-threaded over 2{,}000 iterations after warm-up.
+
+\begin{table}[t]
+\caption{Detection latency per request}
+\label{tab:latency}
+\centering
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Stage & Mean & p50 & p95 \\
+\midrule
+Layer 1 block (short-circuit) & 47\,$\mu$s   & 48\,$\mu$s   & 57\,$\mu$s \\
+Isolation Forest (300 trees)  & 3.37\,ms     & 3.20\,ms     & 4.33\,ms \\
+Autoencoder                   & 30\,$\mu$s   & 25\,$\mu$s   & 57\,$\mu$s \\
+Meta-learner                  & 1.44\,ms     & 1.30\,ms     & 2.11\,ms \\
+\midrule
+\textbf{Full ML path}         & \textbf{5.43\,ms} & 5.06\,ms & 7.48\,ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The distribution of cost is worth noting. The autoencoder --- the strongest
+individual detector --- is also the cheapest stage at 30\,$\mu$s. The
+Isolation Forest dominates at 62\% of the total despite being the weakest
+detector, and the gradient-boosted meta-learner costs 1.44\,ms against
+46\,$\mu$s for a logistic regression, a 30$\times$ penalty for the accuracy
+gain reported above. We judge that trade acceptable, but it is a trade.
+
+Because Layer~1 short-circuits, cost is a function of traffic composition
+rather than a constant. A request carrying an SQL injection payload is
+rejected 115$\times$ faster than a benign request is cleared, which inverts
+the usual economics: the attacker pays less than the legitimate user, but the
+system spends its budget only where a decision is genuinely uncertain.
+
+%=============================================================================
+\section{Limitations}
+
+We state these plainly because several bound the claims above.
+
+\textbf{Synthetic traffic.} The corpus was generated by a simulator against a
+purpose-built backend. It is labelled, reproducible and family-balanced by
+construction, and it is not real production traffic. The 13.6\% false-positive
+rate observed when the model met a different client population is direct
+evidence that generalisation across traffic populations is not established.
+Validation against a public corpus or a production deployment remains
+outstanding, and no claim in this paper should be read as surviving that test.
+
+\textbf{Throughput is unmeasured.} All latency figures were obtained at
+concurrency one. A 5.4\,ms CPU-bound detection implies a ceiling near 185
+requests per second per core, but we have not load-tested the gateway and
+report no measured throughput or tail latency under contention.
+
+\textbf{Single deployment.} Backend portability is a design property supported
+by the calibration procedure, not an experimental result. We have not
+calibrated against an independently developed backend.
+
+\textbf{Ablation breadth.} Table~\ref{tab:ablation} rests on one seed, and the
+comparison pipeline reconstructs the models independently of the training
+pipeline in order to score identical test requests; it does not currently
+inherit every hyperparameter from the trained artefact. The ranking is
+robust but the magnitudes should be treated as indicative.
+
+\textbf{Evasion.} We have not evaluated against an adaptive adversary who
+knows the feature set. Features derived from character-class ratios and
+encoding deltas are plausibly evadable by an attacker willing to shape
+payloads accordingly.
+
+%=============================================================================
+\section{Conclusion}
+
+MicroAPI Guard demonstrates that inline API anomaly detection does not require
+the infrastructure the recent literature has converged on. A 34-feature
+representation of a single HTTP request, two unsupervised detectors trained
+only on normal traffic, and a gradient-boosted meta-learner reach
+$F_1 = 0.957$ $[0.940, 0.976]$ at a 0.69\% false-positive rate, recall
+$0.794$ $[0.668, 0.914]$ of attacks from families withheld entirely from
+training, and add 5.4\,ms to a request --- or 47\,$\mu$s when a deterministic
+rule settles the matter first. The ensemble significantly outperforms each of
+its constituents ($p < 10^{-34}$).
+
+The architectural claim we would defend most strongly is not the ensemble but
+the layering: running the cheap deterministic check first, letting weak
+signature evidence inform the model rather than override it, and refusing to
+let the statistical layer enforce until it has been fitted on the traffic it
+will police. The methodological claim is that session-grouped splits, a fixed
+false-positive budget, withheld attack families and interval reporting cost us
+a great deal of apparent accuracy --- our best seed reports 1.000 zero-day
+recall against an interval lower bound of 0.668 --- and that the interval is
+the number worth reporting.
+
+Future work should validate against public and production corpora, load-test
+for throughput and tail latency, evaluate the sampling strategy that
+high-throughput deployments would require, and test the feature set against an
+adaptive adversary.
+
+%=============================================================================
+\section*{Acknowledgment}
+
+The authors thank Mrs.~Priyanka Kumbhar of the Department of Information
+Technology, G H Raisoni College of Engineering and Management, Pune, for
+guidance throughout this project.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

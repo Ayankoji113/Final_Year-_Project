@@ -24,3 +24,6 @@ src/legacy/
 # numbers, which belong in the repository.
 !src/ml_pipeline/models/decision.json
 !src/ml_pipeline/models/calibration.json
+
+# hyperparameter search scratch output
+src/ml_pipeline/models_tuning/

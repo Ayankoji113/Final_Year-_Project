@@ -1,236 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MicroAPI Guard - System Architecture</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #f5f7fa;
-            padding: 30px;
-            color: #2c3e50;
-        }
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            padding: 40px;
-        }
-        h1 {
-            text-align: center;
-            font-size: 26px;
-            color: #1a1a2e;
-            margin-bottom: 6px;
-        }
-        .subtitle {
-            text-align: center;
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 30px;
-        }
-        .mermaid {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        .legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            justify-content: center;
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-        }
-        .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-        }
-        .features-table {
-            margin: 20px auto;
-            border-collapse: collapse;
-            font-size: 13px;
-            width: 100%;
-            max-width: 700px;
-        }
-        .features-table th {
-            background: #1a1a2e;
-            color: #fff;
-            padding: 8px 14px;
-            text-align: left;
-        }
-        .features-table td {
-            padding: 6px 14px;
-            border-bottom: 1px solid #eee;
-        }
-        .features-table tr:nth-child(even) { background: #f8f9fa; }
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 28px 0 10px 0;
-            color: #1a1a2e;
-            text-align: center;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MicroAPI Guard - Architecture Figure</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:#f2f3f5; color:#222; padding:32px 20px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  h1 { font-size:20px; font-weight:600; margin-bottom:4px; }
+  .sub { font-size:13px; color:#666; margin-bottom:26px; }
+  .card { background:#fff; border:1px solid #dcdee1; border-radius:6px; padding:24px; margin-bottom:22px; }
+  .card h2 { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+             color:#666; margin-bottom:14px; }
+  .fig { text-align:center; overflow-x:auto; }
+  .fig img { max-width:100%; height:auto; }
+  .fig.zoom img { width:1032px; max-width:none; image-rendering:auto; }
+  .cap { font-family:'Times New Roman',Times,serif; font-size:13px; color:#333;
+         margin-top:16px; text-align:left; line-height:1.5; }
+  pre { background:#f6f7f8; border:1px solid #e2e4e7; border-radius:4px; padding:12px 14px;
+        font-size:12px; line-height:1.55; overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th { background:#2a2d33; color:#fff; text-align:left; padding:7px 10px; font-weight:600; }
+  td { padding:6px 10px; border-bottom:1px solid #ececec; vertical-align:top; }
+  tr:nth-child(even) td { background:#fafafa; }
+  code { font-family:Consolas,monospace; font-size:11.5px; color:#444; }
+  .note { font-size:12.5px; color:#666; line-height:1.6; border-left:3px solid #dcdee1;
+          padding-left:12px; margin-top:14px; }
+</style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
 
-    <h1>MicroAPI Guard &mdash; System Architecture</h1>
-    <p class="subtitle">AI-Based Anomaly Detection Framework for API Traffic in Microservice Architectures</p>
+  <h1>MicroAPI Guard &mdash; Architecture Figure</h1>
+  <p class="sub">IEEE-format vector figure. Source of truth: <code>architecture_ieee.svg</code></p>
 
-    <div class="mermaid">
-flowchart TB
+  <div class="card">
+    <h2>Figure &mdash; actual size (516 pt &asymp; 7.16 in, double-column span)</h2>
+    <div class="fig"><img src="architecture_ieee.svg" alt="MicroAPI Guard architecture"></div>
+    <p class="cap">
+      <strong>Fig. 1.</strong>&nbsp; MicroAPI Guard request pipeline. Every request is normalised
+      into a 34-feature vector, screened by a deterministic signature and rate-limiting layer, and
+      &mdash; only if it survives &mdash; scored by two unsupervised base detectors whose outputs a
+      gradient-boosted meta-learner combines into the single blocking decision. A policy engine
+      determines which layers may enforce. Dashed paths are off the request path.
+    </p>
+  </div>
 
-    CLIENT["fa:fa-globe Client / Locust
-    (Normal + Attack Traffic)"]
+  <div class="card">
+    <h2>Figure &mdash; 2&times; (legibility check)</h2>
+    <div class="fig zoom"><img src="architecture_ieee.svg" alt="Architecture, 2x"></div>
+  </div>
 
-    GW["fa:fa-bolt FastAPI API Gateway
-    (Async Request Interceptor)"]
+  <div class="card">
+    <h2>Using it in the paper</h2>
+    <pre>% convert once, keeps vector quality (no rasterising):
+%   rsvg-convert -f pdf -o architecture_ieee.pdf architecture_ieee.svg
+%   inkscape architecture_ieee.svg --export-filename=architecture_ieee.pdf
 
-    REDIS[("fa:fa-database Redis
-    Sliding Window
-    State Store")]
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{architecture_ieee.pdf}
+  \caption{MicroAPI Guard request pipeline. Every request is normalised into a
+  34-feature vector, screened by a deterministic signature and rate-limiting
+  layer, and---only if it survives---scored by two unsupervised base detectors
+  whose outputs a gradient-boosted meta-learner combines into the single
+  blocking decision. Dashed paths are off the request path.}
+  \label{fig:architecture}
+\end{figure*}</pre>
+    <p class="note">
+      Drawn at 516&nbsp;pt so it spans both columns (<code>figure*</code>). For a single-column
+      <code>figure</code>, the same content has to be re-laid-out vertically at 252&nbsp;pt &mdash;
+      scaling this one down would drop the 6.5&nbsp;pt labels below IEEE&rsquo;s legibility floor.
+      The figure is pure vector, uses no fill that fails in grayscale, and carries no colour that
+      the caption depends on.
+    </p>
+  </div>
 
-    FE["fa:fa-cogs Feature Extractor
-    (7 Features Per Request)"]
-
-    STATIC["Static Rate Limiter
-    _______________
-    Rule-Based
-    No Training"]
-
-    IF["Isolation Forest
-    _______________
-    Scikit-Learn
-    Unsupervised ML"]
-
-    AE["Deep Autoencoder
-    _______________
-    PyTorch
-    Deep Learning"]
-
-    META["Logistic Regression Meta-Learner
-    (Combines 3 Scores into Final Decision)"]
-
-    FLAG{"Final Flag:
-    Normal or Anomaly"}
-
-    FORWARD["Forward Request
-    to Backend"]
-
-    BLOCK["Block Request
-    and Raise Alert"]
-
-    SVC1["User Service"]
-    SVC2["Product Service"]
-    SVC3["Order Service"]
-
-    DASH["Streamlit Live Dashboard
-    (Real-Time Monitoring)"]
-
-    CLIENT -->|HTTP Request| GW
-    GW --> FE
-    FE <-->|Window Count| REDIS
-    FE -->|Feature Vector| STATIC
-    FE -->|Feature Vector| IF
-    FE -->|Feature Vector| AE
-    STATIC -->|Score 1| META
-    IF -->|Score 2| META
-    AE -->|Score 3| META
-    META --> FLAG
-    FLAG -->|Normal| FORWARD
-    FLAG -->|Anomaly| BLOCK
-    FORWARD --> SVC1
-    FORWARD --> SVC2
-    FORWARD --> SVC3
-    META -.->|Live Results| DASH
-    BLOCK -.->|Threat Alert| DASH
-
-    style CLIENT fill:#3498db,stroke:#2471a3,color:#fff,stroke-width:2px
-    style GW fill:#2c3e50,stroke:#1a252f,color:#fff,stroke-width:2px
-    style REDIS fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:2px
-    style FE fill:#8e44ad,stroke:#6c3483,color:#fff,stroke-width:2px
-    style STATIC fill:#e67e22,stroke:#ca6f1e,color:#fff,stroke-width:2px
-    style IF fill:#27ae60,stroke:#1e8449,color:#fff,stroke-width:2px
-    style AE fill:#2980b9,stroke:#1f6da8,color:#fff,stroke-width:2px
-    style META fill:#c0392b,stroke:#922b21,color:#fff,stroke-width:2px
-    style FLAG fill:#f39c12,stroke:#d4ac0d,color:#fff,stroke-width:2px
-    style FORWARD fill:#27ae60,stroke:#1e8449,color:#fff,stroke-width:2px
-    style BLOCK fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:2px
-    style SVC1 fill:#1abc9c,stroke:#148f77,color:#fff,stroke-width:2px
-    style SVC2 fill:#1abc9c,stroke:#148f77,color:#fff,stroke-width:2px
-    style SVC3 fill:#1abc9c,stroke:#148f77,color:#fff,stroke-width:2px
-    style DASH fill:#9b59b6,stroke:#7d3c98,color:#fff,stroke-width:2px
-    </div>
-
-    <div class="legend">
-        <div class="legend-item"><div class="legend-color" style="background:#3498db"></div> Traffic Source</div>
-        <div class="legend-item"><div class="legend-color" style="background:#2c3e50"></div> API Gateway</div>
-        <div class="legend-item"><div class="legend-color" style="background:#e74c3c"></div> Redis / Block</div>
-        <div class="legend-item"><div class="legend-color" style="background:#8e44ad"></div> Feature Extraction</div>
-        <div class="legend-item"><div class="legend-color" style="background:#e67e22"></div> Static Rate Limiter</div>
-        <div class="legend-item"><div class="legend-color" style="background:#27ae60"></div> Isolation Forest / Forward</div>
-        <div class="legend-item"><div class="legend-color" style="background:#2980b9"></div> Autoencoder</div>
-        <div class="legend-item"><div class="legend-color" style="background:#c0392b"></div> Meta-Learner</div>
-        <div class="legend-item"><div class="legend-color" style="background:#1abc9c"></div> Backend Services</div>
-        <div class="legend-item"><div class="legend-color" style="background:#9b59b6"></div> Dashboard</div>
-    </div>
-
-    <p class="section-title">Feature Vector &mdash; 7 Features Extracted Per Request</p>
-    <table class="features-table">
-        <tr><th>#</th><th>Feature</th><th>Type</th><th>Source</th></tr>
-        <tr><td>1</td><td>HTTP Method</td><td>Categorical</td><td>GET, POST, PUT, DELETE</td></tr>
-        <tr><td>2</td><td>HTTP Path</td><td>Categorical</td><td>/login, /api/orders, /api/users</td></tr>
-        <tr><td>3</td><td>Request Body Size</td><td>Numeric (bytes)</td><td>Content-Length header</td></tr>
-        <tr><td>4</td><td>Response Body Size</td><td>Numeric (bytes)</td><td>Response payload size</td></tr>
-        <tr><td>5</td><td>Request Duration</td><td>Numeric (ms)</td><td>Gateway timing measurement</td></tr>
-        <tr><td>6</td><td>Sliding Window Count</td><td>Numeric</td><td>Redis per-client request count</td></tr>
-        <tr><td>7</td><td>Timestamp</td><td>Numeric (epoch ms)</td><td>Request arrival time</td></tr>
+  <div class="card">
+    <h2>Table &mdash; feature vector (34 features)</h2>
+    <table>
+      <tr><th>#</th><th>Group</th><th>Features</th><th>Captures</th></tr>
+      <tr><td>7</td><td>Body</td>
+        <td><code>body_log_size, body_entropy, body_special_ratio, body_digit_ratio, body_upper_ratio, body_nonascii_ratio, body_size_z</code></td>
+        <td>Payload size and character composition</td></tr>
+      <tr><td>2</td><td>Content</td><td><code>has_body, ct_json</code></td><td>Presence and declared type</td></tr>
+      <tr><td>11</td><td>Path</td>
+        <td><code>path_len, path_depth, path_max_seg, path_entropy, path_special_ratio, path_digit_ratio, path_numeric_seg_ratio, path_nonascii_ratio, path_decode_delta, path_dot_count, path_known</code></td>
+        <td>URL structure, not identity; <code>decode_delta</code> catches encoding evasion</td></tr>
+      <tr><td>5</td><td>Query</td>
+        <td><code>q_param_count, q_max_val_len, q_total_len, q_special_ratio, q_decode_delta</code></td>
+        <td>Injection payloads distort query shape</td></tr>
+      <tr><td>1</td><td>Behaviour</td><td><code>win_distinct_paths</code></td><td>Endpoint spread &mdash; scanning</td></tr>
+      <tr><td>7</td><td>Method</td><td><code>m_get, m_post, m_put, m_delete, m_patch, m_other, is_write</code></td><td>One-hot method plus write flag</td></tr>
+      <tr><td>1</td><td>L1 evidence</td><td><code>n_flags</code></td><td>Non-blocking rule hits, as evidence</td></tr>
     </table>
+    <p class="note">
+      Route identity is never a feature. The path template keys the per-endpoint statistical
+      baseline, but the raw path never reaches a model &mdash; feeding it in is what turned the
+      earlier version into an endpoint lookup table.
+    </p>
+  </div>
 
-    <p class="section-title">Technology Stack</p>
-    <table class="features-table">
-        <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
-        <tr><td>API Gateway</td><td>FastAPI (Python 3.10+)</td><td>Async request interception and ML inference</td></tr>
-        <tr><td>State Store</td><td>Redis</td><td>In-memory sliding window counters</td></tr>
-        <tr><td>Isolation Forest</td><td>Scikit-Learn</td><td>Unsupervised outlier detection</td></tr>
-        <tr><td>Autoencoder</td><td>PyTorch</td><td>Deep learning anomaly detection</td></tr>
-        <tr><td>Meta-Learner</td><td>Logistic Regression</td><td>Ensemble score combination</td></tr>
-        <tr><td>Traffic Simulator</td><td>Locust</td><td>Normal and Attack traffic generation</td></tr>
-        <tr><td>Dashboard</td><td>Streamlit</td><td>Real-time monitoring and alerts</td></tr>
-        <tr><td>Backend (Mock)</td><td>FastAPI Microservices</td><td>User, Product, Order services</td></tr>
-        <tr><td>Deployment</td><td>Docker and Docker Compose</td><td>Containerized multi-service setup</td></tr>
+  <div class="card">
+    <h2>Table &mdash; enforcement modes</h2>
+    <table>
+      <tr><th>Mode</th><th>L1 (rules, rate)</th><th>L4 (ML verdict)</th><th>Used when</th></tr>
+      <tr><td><code>monitor</code></td><td>logged</td><td>logged</td><td>Calibration window on a new backend</td></tr>
+      <tr><td><code>enforce-l1</code> (default)</td><td><strong>blocks</strong></td><td>logged</td><td>Steady state for a fresh deployment</td></tr>
+      <tr><td><code>enforce</code></td><td><strong>blocks</strong></td><td><strong>blocks</strong></td><td>After retraining on that deployment&rsquo;s traffic</td></tr>
     </table>
+  </div>
+
+  <div class="card">
+    <h2>Table &mdash; results</h2>
+    <table>
+      <tr><th>Metric</th><th>Mean [95% CI]</th><th>Basis</th></tr>
+      <tr><td>F1</td><td>0.957 [0.940, 0.976]</td>
+          <td rowspan="4">10 seeds, session-grouped splits (<code>models/validation.json</code>)</td></tr>
+      <tr><td>Precision</td><td>0.986 [0.982, 0.990]</td></tr>
+      <tr><td>False positive rate</td><td>0.0069 [0.0052, 0.0089]</td></tr>
+      <tr><td>Zero-day recall</td><td>0.794 [0.668, 0.914]</td></tr>
+      <tr><td>Detection latency, ML path</td><td>5.4 ms mean, 7.5 ms p95</td>
+          <td rowspan="2">Single-threaded microbenchmark</td></tr>
+      <tr><td>Detection latency, L1 block</td><td>47 &micro;s</td></tr>
+    </table>
+    <p class="note">
+      Zero-day recall is measured on three attack families (<code>cmdi</code>, <code>exfil</code>,
+      <code>ssti</code>) withheld from every training and validation pool and present only in the
+      test split. Single-seed figures are not reportable.
+    </p>
+  </div>
 
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script>
-    mermaid.initialize({
-        startOnLoad: true,
-        theme: 'base',
-        flowchart: {
-            useMaxWidth: true,
-            htmlLabels: true,
-            curve: 'basis',
-            rankSpacing: 55,
-            nodeSpacing: 25,
-            padding: 12
-        }
-    });
-</script>
 </body>
 </html>

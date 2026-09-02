@@ -20,13 +20,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from common import config, features                        # noqa: E402
 from common.autoencoder import NumpyAutoencoder            # noqa: E402
-from sklearn.ensemble import IsolationForest               # noqa: E402
+from sklearn.ensemble import (HistGradientBoostingClassifier,  # noqa: E402
+                              IsolationForest)
 from sklearn.linear_model import LogisticRegression        # noqa: E402
 from sklearn.preprocessing import StandardScaler           # noqa: E402
 
-from ml_pipeline.train import (NOVEL_FAMILIES, SEED, apply_baseline,  # noqa: E402
-                               build_baseline, l1_blocks, load_events,
-                               metrics, parse_label, pick_threshold, pool_of)
+# Import the hyperparameters too, not just the helpers. This module rebuilds the
+# pipeline from scratch so that every model scores the SAME test rows - McNemar's
+# pairing assumption requires it - which means it must rebuild the pipeline
+# train.py actually produced. Constructing the detectors with library defaults
+# here would compare the tuned stack against untuned baselines and quietly
+# invalidate the ablation table.
+from ml_pipeline.train import (AE_BOTTLENECK, AE_HIDDEN, AE_NOISE,  # noqa: E402
+                               IF_TREES, META_MODEL, NOVEL_FAMILIES, SEED,
+                               apply_baseline, build_baseline, l1_blocks,
+                               load_events, metrics, parse_label,
+                               pick_threshold, pool_of)
 from ml_pipeline.validate import mcnemar                   # noqa: E402
 
 
@@ -62,10 +71,13 @@ def build():
     Xb = X(base)
     scaler = StandardScaler().fit(Xb)
     Xb_s = scaler.transform(Xb)
-    iforest = IsolationForest(n_estimators=300, contamination="auto",
+    iforest = IsolationForest(n_estimators=IF_TREES, contamination="auto",
                               max_samples=min(4096, len(Xb_s)),
                               random_state=SEED, n_jobs=-1).fit(Xb_s)
-    ae = NumpyAutoencoder(Xb_s.shape[1], seed=SEED).fit(Xb_s, verbose=False)
+    ae = NumpyAutoencoder(Xb_s.shape[1], hidden=AE_HIDDEN,
+                          bottleneck=AE_BOTTLENECK, lr=1e-3, epochs=300,
+                          batch=256, patience=15, seed=SEED,
+                          noise=AE_NOISE).fit(Xb_s, verbose=False)
 
     if_b = -iforest.decision_function(Xb_s)
     ae_b = ae.score(Xb_s)
@@ -81,9 +93,15 @@ def build():
         return r, i, a
 
     rm, im, am = scores(meta)
-    lr = LogisticRegression(class_weight="balanced", max_iter=2000,
-                            random_state=SEED).fit(np.column_stack([rm, im, am]),
-                                                   Y(meta))
+    Mm = np.column_stack([rm, im, am])
+    if META_MODEL == "hgb":
+        lr = HistGradientBoostingClassifier(
+            max_depth=3, max_iter=200, learning_rate=0.1, min_samples_leaf=40,
+            l2_regularization=1.0, early_stopping=True, validation_fraction=0.15,
+            random_state=SEED).fit(Mm, Y(meta))
+    else:
+        lr = LogisticRegression(class_weight="balanced", max_iter=2000,
+                                random_state=SEED).fit(Mm, Y(meta))
     rv, iv, av = scores(val)
     rt, it, at = scores(test)
     pv = lr.predict_proba(np.column_stack([rv, iv, av]))[:, 1]

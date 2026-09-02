@@ -80,7 +80,7 @@ def path_template(path: str) -> str:
     IMPORTANT: the template is NEVER used as a model feature. Feeding endpoint
     identity to the model is what turned the previous version into a lookup
     table. It is used only to key per-endpoint statistical baselines during
-    calibration, and for human-readable grouping in the dashboard.
+    calibration, and for human-readable grouping in reports.
     """
     path = (path or "/").split("?", 1)[0]
     out = []

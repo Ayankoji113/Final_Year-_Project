@@ -57,14 +57,36 @@ from common.autoencoder import NumpyAutoencoder                # noqa: E402
 from common.features import Baseline                           # noqa: E402
 
 import joblib                                                  # noqa: E402
-from sklearn.ensemble import IsolationForest                   # noqa: E402
+from sklearn.ensemble import (HistGradientBoostingClassifier,  # noqa: E402
+                              IsolationForest)
 from sklearn.linear_model import LogisticRegression            # noqa: E402
 from sklearn.metrics import (average_precision_score,          # noqa: E402
                              roc_auc_score)
 from sklearn.preprocessing import StandardScaler               # noqa: E402
 
 SEED = int(os.getenv("TRAIN_SEED", 42))
-NOVEL_FAMILIES = {"cmdi", "exfil", "ssti"}
+
+# Families withheld from meta/val so their test recall is a real zero-day
+# measurement. Overridable so the hyperparameter search can select against a
+# DIFFERENT triple (a pseudo-zero-day signal) and leave cmdi/exfil/ssti
+# genuinely untouched for the final evaluation. See ml_pipeline/tune.py.
+NOVEL_FAMILIES = {f.strip() for f in
+                  os.getenv("TRAIN_NOVEL", "cmdi,exfil,ssti").split(",") if f.strip()}
+
+# Hyperparameters. These defaults are the winners of the grid search in
+# ml_pipeline/tune.py (24 configs x 5 seeds, selected on validation only).
+# tune.py overrides them via env.
+#
+# The meta-learner is the one that mattered. Logistic regression averaged
+# validation F1 0.600 with a seed-to-seed sd of 0.196; gradient boosting
+# averaged 0.940 with sd 0.043. The instability everyone was attributing to the
+# unsupervised base detectors was the linear meta-learner failing to separate
+# score combinations that are not linearly separable.
+AE_NOISE = float(os.getenv("TRAIN_AE_NOISE", 0.0))
+AE_HIDDEN = int(os.getenv("TRAIN_AE_HIDDEN", 32))
+AE_BOTTLENECK = int(os.getenv("TRAIN_AE_BOTTLENECK", 16))
+IF_TREES = int(os.getenv("TRAIN_IF_TREES", 300))
+META_MODEL = os.getenv("TRAIN_META", "hgb")           # lr | hgb
 
 MODELS_DIR = config.MODELS_DIR
 # Overridable so a preserved corpus can be retrained without regenerating
@@ -341,13 +363,14 @@ def main():
     scaler = StandardScaler().fit(Xb)
     Xb_s = scaler.transform(Xb)
 
-    iforest = IsolationForest(n_estimators=300, contamination="auto",
+    iforest = IsolationForest(n_estimators=IF_TREES, contamination="auto",
                               max_samples=min(4096, len(Xb_s)),
                               random_state=SEED, n_jobs=-1).fit(Xb_s)
     print(f"      IsolationForest fitted on {len(Xb_s):,} normal rows")
 
-    ae = NumpyAutoencoder(Xb_s.shape[1], hidden=32, bottleneck=12,
-                          lr=1e-3, epochs=300, batch=256, patience=15, seed=SEED)
+    ae = NumpyAutoencoder(Xb_s.shape[1], hidden=AE_HIDDEN, bottleneck=AE_BOTTLENECK,
+                          lr=1e-3, epochs=300, batch=256, patience=15, seed=SEED,
+                          noise=AE_NOISE)
     ae.fit(Xb_s)
     print(f"      Autoencoder best val reconstruction MSE = {ae.best_val:.6f}")
 
@@ -368,17 +391,31 @@ def main():
         return np.column_stack([r, i, a]), i, a, r
 
     # ── meta-learner ─────────────────────────────────────────────────────────
-    print("\n[6/8] Meta-learner (Logistic Regression over base-detector scores)")
+    print(f"\n[6/8] Meta-learner ({META_MODEL}) over base-detector scores")
     Mm, _, _, _ = meta_features(meta)
     ym = Y(meta)
-    meta_lr = LogisticRegression(class_weight="balanced", max_iter=2000,
-                                 random_state=SEED).fit(Mm, ym)
-    print(f"      coefficients  rate={meta_lr.coef_[0][0]:+.3f}  "
-          f"iforest={meta_lr.coef_[0][1]:+.3f}  autoencoder={meta_lr.coef_[0][2]:+.3f}")
-    print(f"      intercept     {meta_lr.intercept_[0]:+.3f}")
-    if np.any(meta_lr.coef_[0] < -0.5):
-        print("      NOTE: a strongly negative coefficient means that detector is")
-        print("            anti-correlated with attacks - investigate before trusting.")
+    if META_MODEL == "hgb":
+        # Gradient boosting can express interactions the linear meta-learner
+        # cannot - e.g. "a high autoencoder error only counts when the request
+        # also arrives at an unknown endpoint". Three inputs and a few thousand
+        # rows, so it is kept deliberately shallow to avoid fitting `meta`'s
+        # noise instead of its structure.
+        meta_lr = HistGradientBoostingClassifier(
+            max_depth=3, max_iter=200, learning_rate=0.1,
+            min_samples_leaf=40, l2_regularization=1.0,
+            early_stopping=True, validation_fraction=0.15,
+            random_state=SEED).fit(Mm, ym)
+        print(f"      HistGradientBoosting, {meta_lr.n_iter_} boosting rounds")
+    else:
+        meta_lr = LogisticRegression(class_weight="balanced", max_iter=2000,
+                                     random_state=SEED).fit(Mm, ym)
+        print(f"      coefficients  rate={meta_lr.coef_[0][0]:+.3f}  "
+              f"iforest={meta_lr.coef_[0][1]:+.3f}  "
+              f"autoencoder={meta_lr.coef_[0][2]:+.3f}")
+        print(f"      intercept     {meta_lr.intercept_[0]:+.3f}")
+        if np.any(meta_lr.coef_[0] < -0.5):
+            print("      NOTE: a strongly negative coefficient means that detector is")
+            print("            anti-correlated with attacks - investigate before trusting.")
 
     # ── threshold on validation ──────────────────────────────────────────────
     Mv, iv, av, rv = meta_features(val)
@@ -492,6 +529,12 @@ def main():
         "pool_sizes": {"base": len(base), "meta": len(meta),
                        "val": len(val), "test": len(test)},
         "novel_families": sorted(NOVEL_FAMILIES),
+        "hyperparams": {"ae_noise": AE_NOISE, "ae_hidden": AE_HIDDEN,
+                        "ae_bottleneck": AE_BOTTLENECK, "if_trees": IF_TREES,
+                        "meta": META_MODEL},
+        # Selection metric. The hyperparameter search reads this and never the
+        # test metrics below.
+        "val_f1": round(float(vf1), 4),
         "test_metrics": {k: (round(float(v), 4) if isinstance(v, float) else v)
                          for k, v in m_stack.items()},
         "test_roc_auc": round(float(auc), 4),

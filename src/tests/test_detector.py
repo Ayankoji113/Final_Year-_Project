@@ -88,7 +88,12 @@ def test_meta_learner_is_the_decision_maker(d):
 
 @needs_models
 def test_meta_lr_consumes_exactly_three_base_scores(d):
-    assert d.meta_lr.coef_.shape == (1, 3)
+    # `n_features_in_` rather than `coef_.shape`: the meta-learner is now
+    # selectable (logistic regression or gradient boosting, see TRAIN_META), and
+    # only the linear one has coefficients. The invariant under test is the
+    # arity of the stack - three base detectors in, one decision out - which
+    # holds for either model and is what a mismatch would break.
+    assert d.meta_lr.n_features_in_ == 3
     assert d.meta["meta_inputs"] == ["rate", "isolation_forest", "autoencoder"]
 
 

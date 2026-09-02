@@ -26,7 +26,6 @@ client ──► MicroAPI Guard ──► your backend
 | `ml_pipeline/train.py` | Training + evaluation |
 | `ml_pipeline/calibrate.py` | Adapt a trained model to a new backend |
 | `traffic_simulator/generate.py` | Labelled traffic generator |
-| `dashboard/app.py` | Streamlit monitoring UI |
 | `tests/` | pytest suite |
 | `legacy/` | Previous models/dataset, kept for before-and-after comparison |
 
@@ -59,9 +58,6 @@ docker compose down && docker compose up -d
 # 5. verify
 pytest tests/ -v
 ```
-
-Dashboard: `docker compose -f docker-compose.yml -f docker-compose.lab.yml up -d dashboard`
-→ http://localhost:8501
 
 ## Putting it in front of a different backend
 

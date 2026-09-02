@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 516 216" width="516" height="216"
+     font-family="Times New Roman, Times, serif" fill="#000">
+  <defs>
+    <marker id="ar" markerWidth="7" markerHeight="6" refX="6.2" refY="2.4" orient="auto">
+      <path d="M0,0 L6.2,2.4 L0,4.8 z" fill="#000"/>
+    </marker>
+    <marker id="arw" markerWidth="7" markerHeight="6" refX="6.2" refY="2.4" orient="auto">
+      <path d="M0,0 L6.2,2.4 L0,4.8 z" fill="#555"/>
+    </marker>
+    <marker id="ars" markerWidth="5" markerHeight="5" refX="4.2" refY="1.9" orient="auto">
+      <path d="M0,0 L4.2,1.9 L0,3.8 z" fill="#000"/>
+    </marker>
+  </defs>
+
+  <g stroke="#000" stroke-width="0.9" fill="#fff">
+    <rect x="2"   y="58" width="42"  height="32" rx="2"/>
+    <rect x="58"  y="34" width="74"  height="80"/>
+    <rect x="146" y="34" width="82"  height="80"/>
+    <rect x="242" y="34" width="136" height="82" fill="#eeeeee"/>
+    <rect x="392" y="34" width="58"  height="80"/>
+    <rect x="464" y="58" width="50"  height="32" rx="2"/>
+  </g>
+
+  <!-- Layer 2-4 internals -->
+  <g stroke="#000" stroke-width="0.8" fill="#fff">
+    <rect x="250" y="54" width="60" height="20"/>
+    <rect x="316" y="54" width="54" height="20"/>
+    <rect x="250" y="84" width="120" height="26"/>
+  </g>
+
+  <!-- Secondary blocks -->
+  <g stroke="#000" stroke-width="0.9" fill="#fff">
+    <rect x="146" y="136" width="82" height="26"/>
+    <rect x="380" y="136" width="82" height="26"/>
+  </g>
+  <rect x="146" y="180" width="232" height="30" stroke="#555" stroke-width="0.9"
+        stroke-dasharray="3 2" fill="#f7f7f7"/>
+
+  <!-- Labels -->
+  <g font-size="8" text-anchor="middle">
+    <text x="23"  y="78">Client</text>
+    <text x="95"  y="50" font-weight="bold">Preprocessing</text>
+    <text x="187" y="50" font-weight="bold">Layer 1</text>
+    <text x="310" y="48" font-weight="bold">Layers 2&#8211;4</text>
+    <text x="421" y="52" font-weight="bold">Policy Engine</text>
+    <text x="489" y="70">Backend</text>
+    <text x="489" y="80">service</text>
+  </g>
+
+  <g font-size="6.5" text-anchor="middle" fill="#222">
+    <text x="95"  y="66">client ID, path template,</text>
+    <text x="95"  y="76">body cap (1 MiB)</text>
+    <text x="95"  y="90">34-feature vector,</text>
+    <text x="95"  y="100">standardised</text>
+
+    <text x="187" y="66">26 signature rules</text>
+    <text x="187" y="76">(22 block, 4 flag)</text>
+    <text x="187" y="90">sliding-window</text>
+    <text x="187" y="100">rate limiter</text>
+
+    <text x="280" y="64">L2 Isolation</text>
+    <text x="280" y="72">Forest</text>
+    <text x="343" y="64">L3 Auto-</text>
+    <text x="343" y="72">encoder</text>
+    <text x="310" y="95">L4 Meta-learner (gradient boosting)</text>
+    <text x="310" y="105">inputs: rate score, L2, L3</text>
+
+    <text x="421" y="70">enforce</text>
+    <text x="421" y="82">enforce-L1</text>
+    <text x="421" y="94">monitor</text>
+
+    <text x="187" y="147">Redis: sliding-window</text>
+    <text x="187" y="157">counters, per client</text>
+
+    <text x="421" y="147">403 Blocked</text>
+    <text x="421" y="157">+ layer, reason</text>
+
+    <text x="262" y="192">Offline adaptation &#8212; event log &#8594; calibrate.py (baseline, threshold)</text>
+    <text x="262" y="203">&#8594; train.py (full retrain, required before full enforcement)</text>
+  </g>
+
+  <!-- Main flow -->
+  <g stroke="#000" stroke-width="0.9" fill="none" marker-end="url(#ar)">
+    <path d="M44,74 L56,74"/>
+    <path d="M132,74 L144,74"/>
+    <path d="M228,74 L240,74"/>
+    <path d="M378,74 L390,74"/>
+    <path d="M450,74 L462,74"/>
+    <path d="M421,114 L421,134"/>
+  </g>
+
+  <g stroke="#000" stroke-width="0.8" fill="none" marker-end="url(#ars)">
+    <path d="M280,74 L280,84"/>
+    <path d="M343,74 L343,84"/>
+  </g>
+
+  <!-- L1 short-circuit -->
+  <path d="M204,34 L204,18 L421,18 L421,32" stroke="#000" stroke-width="0.9"
+        fill="none" marker-end="url(#ar)"/>
+  <text x="312" y="14" font-size="6.5" text-anchor="middle">L1 verdict bypasses the ML stages (47 &#181;s)</text>
+
+  <!-- Redis + offline -->
+  <path d="M187,114 L187,134" stroke="#555" stroke-width="0.9" stroke-dasharray="3 2"
+        fill="none" marker-end="url(#arw)"/>
+  <path d="M310,180 L310,117" stroke="#555" stroke-width="0.9" stroke-dasharray="3 2"
+        fill="none" marker-end="url(#arw)"/>
+  <text x="322" y="150" font-size="6.5" fill="#555" text-anchor="start">models,</text>
+  <text x="322" y="160" font-size="6.5" fill="#555" text-anchor="start">baseline,</text>
+  <text x="322" y="170" font-size="6.5" fill="#555" text-anchor="start">threshold</text>
+</svg>
