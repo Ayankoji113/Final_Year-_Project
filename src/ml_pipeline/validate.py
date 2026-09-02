@@ -105,18 +105,24 @@ def bootstrap_ci(values, n_boot=10000, alpha=0.05, seed=0):
 
 # ── multi-seed driver ─────────────────────────────────────────────────────────
 
+# Scratch artefact directory, same discipline as tune.py. Without it every seed
+# overwrites models/ and the shipped gateway artefacts become whichever seed ran
+# last - not the canonical model. This has already happened once.
+SCRATCH = config.MODELS_DIR + "_validate"
+
+
 def run_seeds(seeds, train_script):
     """Retrain end to end under each seed and collect the test metrics."""
     runs = []
     for s in seeds:
         print(f"\n{'='*66}\n  SEED {s}\n{'='*66}")
-        env = dict(os.environ, TRAIN_SEED=str(s))
+        env = dict(os.environ, TRAIN_SEED=str(s), MODELS_DIR=SCRATCH)
         r = subprocess.run([sys.executable, train_script], env=env,
                            capture_output=True, text=True)
         if r.returncode != 0:
             print(f"  seed {s} FAILED:\n{r.stdout[-1500:]}\n{r.stderr[-800:]}")
             continue
-        with open(os.path.join(config.MODELS_DIR, "decision.json")) as fh:
+        with open(os.path.join(SCRATCH, "decision.json")) as fh:
             d = json.load(fh)
         m = d["test_metrics"]
         runs.append({"seed": s, "f1": m["f1"], "recall": m["recall"],
