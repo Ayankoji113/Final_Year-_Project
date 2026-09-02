@@ -86,7 +86,8 @@ cannot drift between fitting and serving. Three consequences that are easy to br
 
 Single-seed metrics are not reportable. The 10-seed intervals in `models/validation.json`
 are the honest figures and are much weaker than the seed-42 numbers in `decision.json`
-(F1 0.854 [0.812–0.891] vs 0.929; zero-day recall 0.598 [0.445–0.749] vs 0.887).
+(F1 0.957 [0.940–0.976] vs 0.991; zero-day recall 0.794 [0.668–0.914] vs 1.000).
+Seed 42 is the *best* of the ten runs and reaches recall 1.000 — never quote that alone.
 
 ## Hyperparameters and the search
 
@@ -101,16 +102,22 @@ other channel.
 `tune.py` keeps two separations that make its output quotable, and both must survive any
 edit: it searches on seeds 11–15 while `validate.py` reports on 1–10 (different seeds mean
 different session partitions), and it rotates `TRAIN_NOVEL` to a *different* family triple
-so the real zero-day families never inform a hyperparameter choice. It writes to
-`models_tuning/` so a few hundred throwaway retrains can't clobber the live artefacts.
+so the real zero-day families never inform a hyperparameter choice.
+
+**Both drivers must pass `MODELS_DIR`** — `tune.py` writes to `models_tuning/`,
+`validate.py` to `models_validate/`. Without it every retrain overwrites `models/` and the
+shipped artefacts become whichever seed happened to run last. This happened: `models/` was
+committed at seed 10 from a `validate.py` run. The live models are seed 42; regenerate them
+with `TRAIN_EVENT_LOG=data/events_training.jsonl TRAIN_SEED=42 python ml_pipeline/train.py`.
 
 ## compare.py duplicates the pipeline
 
 `ml_pipeline/compare.py` rebuilds scaler → forest → autoencoder → meta-learner
 independently of `train.py`, so that every model scores the *same* test rows (McNemar's
 pairing assumption requires it). **A change to `train.py`'s modelling must be mirrored
-there.** It is currently already out of sync — it does not read the hyperparameter env
-vars and constructs `NumpyAutoencoder` with defaults.
+there.** It now imports `AE_NOISE`/`AE_HIDDEN`/`AE_BOTTLENECK`/`IF_TREES`/`META_MODEL`
+straight from `train.py`, so the knobs stay in one place — keep it that way rather than
+re-reading the env vars locally.
 
 ## Deployment defaults worth knowing
 

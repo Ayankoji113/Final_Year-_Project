@@ -13,7 +13,7 @@ client ──► MicroAPI Guard ──► your backend
                 ├── L1  signature rules + rate limiting   (deterministic)
                 ├── L2  Isolation Forest                  (unsupervised)
                 ├── L3  Autoencoder                       (unsupervised)
-                └── L4  Logistic Regression meta-learner  ← makes the decision
+                └── L4  Gradient-boosted meta-learner     ← makes the decision
 ```
 
 ## Table of Contents
@@ -40,7 +40,7 @@ often block legitimate traffic during spikes.
 
 MicroAPI Guard combines both approaches. Deterministic rules handle what is
 certain; unsupervised models trained only on normal traffic handle what no
-signature anticipates. A logistic-regression meta-learner combines their scores
+signature anticipates. A gradient-boosted meta-learner combines their scores
 into the final decision.
 
 ## Features
@@ -75,16 +75,19 @@ bootstrap 95% confidence intervals.
 
 ### Layers 2–4 — learned stacking ensemble
 
-| Metric | Single run | 10 seeds (95% CI) |
+| Metric | Seed 42 | 10 seeds (95% CI) |
 |---|---|---|
-| Accuracy | 0.9520 | — |
-| Precision | 0.9611 | 0.978 [0.970 – 0.985] |
-| Recall | 0.8989 | 0.764 [0.700 – 0.828] |
-| F1-Score | 0.9290 | 0.854 [0.812 – 0.891] |
-| ROC-AUC | 0.9926 | 0.987 [0.980 – 0.993] |
-| PR-AUC | 0.9863 | 0.978 [0.968 – 0.986] |
-| False Positive Rate | 0.0195 | 0.0099 [0.006 – 0.015] |
-| Zero-day recall | 0.8865 | 0.598 [0.445 – 0.749] |
+| Accuracy | 0.9939 | — |
+| Precision | 0.9828 | 0.986 [0.982 – 0.990] |
+| Recall | 1.0000 | 0.931 [0.900 – 0.964] |
+| F1-Score | 0.9913 | 0.957 [0.940 – 0.976] |
+| ROC-AUC | 0.9991 | 0.989 [0.972 – 0.999] |
+| PR-AUC | 0.9982 | 0.989 [0.973 – 0.998] |
+| False Positive Rate | 0.0094 | 0.0069 [0.005 – 0.009] |
+| Zero-day recall | 1.0000 | 0.794 [0.668 – 0.914] |
+
+**The interval is the result; the seed-42 column is one draw from it.** Seed 42
+happens to be the best of the ten runs — quote the CI, not the perfect recall.
 
 Zero-day recall is measured by withholding three attack families
 (`cmdi`, `ssti`, `exfil`) from training entirely and scoring them only at test.
@@ -96,22 +99,22 @@ test rows:
 
 | Model | F1 | Recall | McNemar vs. stack |
 |---|---|---|---|
-| L1 rate only | 0.515 | 0.349 | stack better, p = 2.9e-70 |
-| L2 Isolation Forest only | 0.406 | 0.264 | stack better, p = 3.1e-96 |
-| L3 Autoencoder only | 0.870 | 0.780 | stack better, p = 8.4e-12 |
-| **L4 stack** | **0.929** | **0.899** | — |
+| L1 rate only | 0.515 | 0.349 | stack better, p = 1.6e-99 |
+| L2 Isolation Forest only | 0.406 | 0.264 | stack better, p = 7.1e-122 |
+| L3 Autoencoder only | 0.870 | 0.780 | stack better, p = 5.5e-35 |
+| **L4 stack** | **0.991** | **1.000** | — |
 
 ## Tech Stack
 
 - **Gateway:** Python 3.11, FastAPI, Uvicorn, HTTPX
 - **State:** Redis (asyncio, sorted sets + HyperLogLog)
-- **ML:** scikit-learn (Isolation Forest, Logistic Regression), NumPy
+- **ML:** scikit-learn (Isolation Forest, HistGradientBoosting), NumPy
 - **Deep learning:** dense denoising-capable autoencoder implemented in NumPy —
   no PyTorch dependency; the network is 34→32→12→32→34 trained with Adam and
   early stopping
 - **Traffic generation:** Python standard library only (no Locust required)
 - **Containerisation:** Docker & Docker Compose
-- **Testing:** pytest (92 tests)
+- **Testing:** pytest (102 tests)
 
 ## Architecture
 
@@ -124,7 +127,8 @@ test rows:
 4. **Feature extraction** — 34 behavioural features.
 5. **L2 Isolation Forest** and **L3 Autoencoder** — both fitted on normal
    traffic only, so neither needs attack labels.
-6. **L4 Logistic Regression** — combines the rate, forest and autoencoder scores
+6. **L4 meta-learner** (`TRAIN_META=hgb`, gradient boosting; `lr` also
+   supported) — combines the rate, forest and autoencoder scores
    into the final probability. This is the only component that decides.
 7. **Logging** — asynchronous, numeric-only.
 
@@ -308,7 +312,7 @@ Stated plainly, because they matter for how this should be deployed.
 | `src/gateway/` | Reverse proxy, rate limiter, detection pipeline |
 | `src/ml_pipeline/` | `train.py`, `calibrate.py`, `validate.py`, `compare.py` |
 | `src/traffic_simulator/` | Labelled traffic generation |
-| `src/tests/` | pytest suite (92 tests) |
+| `src/tests/` | pytest suite (102 tests) |
 | `src/legacy/` | Previous models/dataset, kept for before-and-after comparison |
 | `docs/` | Design documents and the review script |
 

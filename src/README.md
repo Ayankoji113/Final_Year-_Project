@@ -10,7 +10,7 @@ client ──► MicroAPI Guard ──► your backend
                 ├── L1  signature rules + rate limiting   (deterministic)
                 ├── L2  Isolation Forest                  (unsupervised)
                 ├── L3  Autoencoder                       (unsupervised)
-                └── L4  Logistic Regression meta-learner  ← makes the decision
+                └── L4  Gradient-boosted meta-learner     ← makes the decision
 ```
 
 ## Layout
@@ -20,7 +20,7 @@ client ──► MicroAPI Guard ──► your backend
 | `common/` | Shared detection core — imported by **both** the gateway and the trainer, so features cannot drift between training and serving |
 | `common/normalize.py` | Decoding/normalization (defeats percent-, double-, entity- and unicode-encoding bypasses) |
 | `common/rules.py` | Layer 1 signatures. `BLOCK` = certain, `FLAG` = evidence for the model |
-| `common/features.py` | The 43 behavioural features. **Deliberately contains no endpoint identity** |
+| `common/features.py` | The 34 behavioural features. **Deliberately contains no endpoint identity** |
 | `common/autoencoder.py` | Layer 3, NumPy implementation with Adam + early stopping |
 | `gateway/` | FastAPI reverse proxy, rate limiter, detection pipeline |
 | `ml_pipeline/train.py` | Training + evaluation |
