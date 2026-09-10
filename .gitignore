@@ -16,7 +16,6 @@ src/ml_pipeline/sklearn_portable/
 src/data/*.jsonl
 
 # Trained artefacts and calibration backups.
-src/ml_pipeline/models/*.pkl
 src/ml_pipeline/models/*.bak
 src/legacy/
 
