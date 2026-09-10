@@ -1,43 +1,24 @@
-# Paper — MicroAPI Guard (IEEE conference format)
+# Paper - MicroAPI Guard (IEEE conference format)
 
 | File | What it is |
 |---|---|
-| `microapi_guard.tex` | The manuscript. IEEEtran, `conference` class, two-column. |
-| `references.bib` | 22 references. Every one was actually read. |
-| `architecture_ieee.pdf` | Fig. 1, ready for `\includegraphics`. |
-| `architecture_ieee.svg` | Fig. 1 source (vector). Copy of `../diagrams/`. |
+| `microapi_guard.tex` | The manuscript. IEEEtran `conference`, two-column. Self-contained: every figure is drawn inline with TikZ/pgfplots. |
+| `refs.bib` | 19 references, all 2020-2026, one per PDF in `../Paper/`. |
 | `check_originality.py` | Text-overlap check against `../Paper/`. |
 | `ORIGINALITY_AUDIT.md` | Audit results, claim provenance, known discrepancies. |
+| `WRITING_SKELETON.md` | Claims and numbers per section, for rewriting in your own words. |
+| `alt_figures/` | Superseded standalone figures (PDF/SVG/matplotlib). Not used by the .tex. |
 
 ## Before the first build
 
-`architecture_ieee.pdf` is already built and checked in — nothing to convert.
-It is 516 × 216 pt (7.17 × 3.00 in), pure vector, with embedded fonts and no
-raster images, so it scales cleanly to `\textwidth` in a `figure*`.
+Nothing to convert. Every figure is drawn inline with TikZ and pgfplots, so
+the .tex needs no external image files.
 
-If you edit `architecture_ieee.svg`, regenerate the PDF. Neither
-`rsvg-convert` nor Inkscape is installed here, so it was produced with
-headless Chrome, which keeps SVG vector:
-
-```powershell
-# wrapper HTML pins the page to the SVG's exact size with zero margin
-"@page{size:516pt 216pt;margin:0}html,body{margin:0;width:516pt;height:216pt}
- svg{display:block;width:516pt;height:216pt}" |
-  Set-Content $env:TEMP\s.css
-# see the session log for the full wrapper; or simply:
-#   inkscape architecture_ieee.svg --export-filename=architecture_ieee.pdf
-```
-
-Verify a regenerated figure with:
-```bash
-python -c "import pypdf; p=pypdf.PdfReader('architecture_ieee.pdf').pages[0]; \
-print(p.mediabox.width, p.mediabox.height, list(p.get('/Resources',{}).get('/XObject',{})))"
-```
-Expect `516 216 []` — a non-empty XObject list means it got rasterised.
-
-You also need `IEEEtran.cls` and `IEEEtran.bst` — bundled with TeX Live and
-MiKTeX, otherwise from
-<https://www.ieee.org/conferences/publishing/templates.html>.
+You need `IEEEtran.cls`, `IEEEtran.bst`, and the packages the preamble
+declares: `algorithm2e`, `tikz` (with `shapes.geometric`, `shapes.multipart`,
+`arrows.meta`, `positioning`, `calc`, `fit`, `backgrounds`), `pgfplots`
+(compat 1.18), `tabularx`, `booktabs`, `stfloats`, `placeins`, `enumitem`.
+All ship with a full TeX Live or MiKTeX install and are present on Overleaf.
 
 ## Build
 
@@ -50,9 +31,10 @@ pdflatex microapi_guard
 
 No LaTeX toolchain is installed here, so **the document has never been
 compiled**. Structure was validated statically: braces balanced, all
-environments paired, all 22 `\cite` keys present in the `.bib` with no unused
-entries. Expect to fix minor spacing on the first real build. Overleaf is the
-fastest way to get it compiling — upload the four files.
+environments paired, all 19 `\cite` keys present in `refs.bib` with no unused
+entries, no dangling `ef`, and every `tabularx` column spec matching its
+header. Expect to fix minor float placement on the first real build. Overleaf
+is the fastest route — upload `microapi_guard.tex` and `refs.bib`.
 
 ## Checks
 
@@ -60,8 +42,9 @@ fastest way to get it compiling — upload the four files.
 python check_originality.py     # exit 1 if any 8-gram matches a source paper
 ```
 
-Current result: **0 eight-gram overlaps** in 3,437 windows. One six-gram hit,
-`"the owasp api security top 10"`, which is the name of a standard.
+Current result: **0 eight-gram overlaps** in 5,414 windows. Two six-gram hits,
+both proper nouns: `"the owasp api security top 10"` and the dataset list
+`"5g nidd unr idd n baiot"` in the literature table.
 
 This is **not** a plagiarism score — it only compares against the 18 local
 PDFs. Run the real institutional check before submitting. See
