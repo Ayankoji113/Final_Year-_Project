@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+
+/*
+ * MicroAPI Guard console - visual system.
+ *
+ * Deep navy ground, one accent blue, and semantic colour reserved strictly for
+ * verdicts: green allowed, red blocked, amber observed-but-not-enforced, blue
+ * informational. Nothing decorative competes with those four, because on this
+ * console colour IS the data.
+ */
+
+@theme {
+  --color-ink-950: #05080f;
+  --color-ink-900: #080d18;
+  --color-ink-850: #0b1220;
+  --color-ink-800: #0f1828;
+  --color-ink-700: #16233a;
+  --color-ink-600: #1e3050;
+  --color-ink-500: #2b4268;
+
+  --color-slate-t: #7c8db0;
+  --color-slate-b: #aebcd6;
+  --color-slate-hi: #e6ecf7;
+
+  --color-accent-500: #3b82f6;
+  --color-accent-400: #60a5fa;
+  --color-accent-300: #93c5fd;
+
+  --color-ok-500: #22c55e;
+  --color-ok-400: #4ade80;
+  --color-warn-500: #f59e0b;
+  --color-warn-400: #fbbf24;
+  --color-bad-500: #ef4444;
+  --color-bad-400: #f87171;
+  --color-ml-500: #818cf8;
+  --color-ml-400: #a5b4fc;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(59, 130, 246, 0.1), transparent 60%),
+      radial-gradient(900px 600px at 100% 0%, rgba(129, 140, 248, 0.07), transparent 55%),
+      var(--color-ink-950);
+    color: var(--color-slate-hi);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular figures keep metric columns from jittering as numbers tick over. */
+  table,
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-accent-400);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ink-900);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-ink-600);
+    border-radius: 6px;
+    border: 2px solid var(--color-ink-900);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-500);
+  }
+}
+
+@layer components {
+  .panel {
+    background: color-mix(in srgb, var(--color-ink-850) 82%, transparent);
+    border: 1px solid var(--color-ink-700);
+    border-radius: 0.75rem;
+    backdrop-filter: blur(8px);
+  }
+
+  .panel-head {
+    border-bottom: 1px solid var(--color-ink-700);
+    padding: 0.875rem 1.125rem;
+  }
+
+  /* The single glow in the system, used only on the live protection banner. */
+  .glow-accent {
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 8px 40px -16px rgba(59, 130, 246, 0.5);
+  }
+
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 0.25rem;
+    background: var(--color-ink-800);
+    border: 1px solid var(--color-ink-600);
+    color: var(--color-slate-b);
+  }
+
+  .row-hover:hover {
+    background: color-mix(in srgb, var(--color-accent-500) 7%, transparent);
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

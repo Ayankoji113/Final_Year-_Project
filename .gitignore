@@ -30,3 +30,6 @@ src/ml_pipeline/models_validate/
 
 # Word lock files
 ~$*
+
+# Claude Code local settings. Machine-specific, and can contain API tokens.
+.claude/settings.local.json
