@@ -4,6 +4,12 @@
 **From:** Tausib Samir Patel (C37)
 **Scope:** the research paper only
 
+> **Update 2026-09-13.** The model numbers in section 3 describe the previous model on
+> test data from its own training generator. On independent traffic that model was near
+> chance, and it has been replaced. For current numbers and the whole-project handover,
+> read [`../HANDOVER.md`](../HANDOVER.md). The paper is being reframed around this
+> finding: `manuscript/REFRAME_PLAN.md`.
+
 Everything for the paper lives in `manuscript/`. The paper is **written but never
 compiled**. Your job is to compile it, rewrite the prose in our own words, and get it
 through the plagiarism check.

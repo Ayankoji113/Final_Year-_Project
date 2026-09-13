@@ -113,6 +113,7 @@ Namespaced under `/__guard` so they cannot shadow a backend route.
 | `GET /__guard/stats` | counters broken down by deciding layer |
 | `POST /__guard/reload` | hot-reload models and baseline |
 
-> These are unauthenticated. Put them behind network policy or an auth proxy
+> `POST /__guard/reload` requires the `X-Guard-Admin-Token` header when
+> `GUARD_ADMIN_TOKEN` is set. It is empty by default. Put them behind network policy or an auth proxy
 > before exposing the gateway publicly — see Known Limitations in the audit
 > report.

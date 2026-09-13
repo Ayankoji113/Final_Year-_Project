@@ -61,6 +61,12 @@ into the final decision.
 
 ## Results
 
+> **Handing over or picking this up? Read [`HANDOVER.md`](HANDOVER.md) first.**
+> The figures in this section come from test data produced by the same generator
+> used for training, and overstate real performance. On independent traffic the live
+> model (`models_b4`) wrongly flags 17.0% of legitimate requests at ROC-AUC 0.87.
+> See `src/ml_pipeline/models/MODEL_SELECTION.md`.
+
 Measured on a held-out test set of client sessions never used for fitting or
 threshold selection. Headline figures are means over **10 random seeds** with
 bootstrap 95% confidence intervals.
@@ -114,7 +120,7 @@ test rows:
   early stopping
 - **Traffic generation:** Python standard library only (no Locust required)
 - **Containerisation:** Docker & Docker Compose
-- **Testing:** pytest (102 tests)
+- **Testing:** pytest (137 tests)
 
 ## Architecture
 
@@ -253,7 +259,9 @@ Namespaced under `/__guard` so they cannot shadow a backend route.
 | `GET /__guard/stats` | counters broken down by deciding layer |
 | `POST /__guard/reload` | hot-reload models and baseline |
 
-> These are unauthenticated. Put them behind network policy or an auth proxy
+> `POST /__guard/reload` requires the `X-Guard-Admin-Token` header when
+> `GUARD_ADMIN_TOKEN` is set. It is empty by default, and health and stats are always
+> open. Put them behind network policy or an auth proxy
 > before exposing the gateway publicly.
 
 ## Security Posture
@@ -271,12 +279,11 @@ Namespaced under `/__guard` so they cannot shadow a backend route.
 
 Stated plainly, because they matter for how this should be deployed.
 
-1. **The ML layers are not safe to enforce on synthetic training alone.** Against
-   a legitimate traffic source different from the training generator, the
-   ensemble produced a 24.65% false-positive rate, and threshold calibration
-   aborts rather than fixing it — roughly 8% of that traffic saturates the
-   anomaly score and is inseparable at any threshold. This is why `enforce-l1`
-   is the default.
+1. **The ML layers are not yet safe to enforce.** Against an independent
+   legitimate traffic client, the live model wrongly flags 17.0% of requests
+   (the previous model: 61.3%). Only 7 of 13 endpoints meet the 1% target. This
+   is why `enforce-l1` is the default. Per-endpoint canary enforcement with an
+   automatic brake is available; see `HANDOVER.md`.
 2. **Coverage is unstable across seeds.** Zero-day recall ranges from 0.219 to
    1.000 across 10 seeds. Precision, FPR and ROC-AUC are stable; recall is not.
 3. **All evaluation uses synthetic traffic.** No validation against production
@@ -284,8 +291,8 @@ Stated plainly, because they matter for how this should be deployed.
 4. **Feature-space collapse.** Only ~15% of logged events produce distinct
    feature vectors, so identical vectors appear on both sides of the split and
    test metrics are somewhat optimistic.
-5. **Admin endpoints are unauthenticated**, and `/__guard/reload` can swap the
-   active model.
+5. **Admin authentication is optional.** `GUARD_ADMIN_TOKEN` is empty by default,
+   so `/__guard/reload` can swap the active model unless it is set.
 6. **Layer 1 has not been adversarially fuzzed** with dedicated WAF-bypass
    tooling.
 7. **The <20 ms target holds at the median only** — 10.96 ms median detection,
@@ -297,11 +304,13 @@ Stated plainly, because they matter for how this should be deployed.
 | Phase | Status |
 |---|---|
 | Infrastructure & gateway | Complete |
-| Dataset generation | Complete — 35,496 labelled events |
+| Dataset generation | Complete — regenerable; corpus not committed |
 | ML training & stacking ensemble | Complete — leakage-free, session-grouped splits |
 | Real-time inference | Complete — deployed, `enforce-l1` |
 | Statistical validation | Complete — 10-seed CIs, McNemar |
 | Calibration | Implemented; refuses unsafe windows by design |
+| Validation on independent traffic | Complete — second client, 4 draws |
+| ML blocking under 1% false positives | **Not met** — 17.0% |
 | Validation on real/public traffic | **Not done** |
 
 ### Repository layout
@@ -312,7 +321,7 @@ Stated plainly, because they matter for how this should be deployed.
 | `src/gateway/` | Reverse proxy, rate limiter, detection pipeline |
 | `src/ml_pipeline/` | `train.py`, `calibrate.py`, `validate.py`, `compare.py` |
 | `src/traffic_simulator/` | Labelled traffic generation |
-| `src/tests/` | pytest suite (102 tests) |
+| `src/tests/` | pytest suite (137 tests) |
 | `src/legacy/` | Previous models/dataset, kept for before-and-after comparison |
 | `docs/` | Design documents and the review script |
 
