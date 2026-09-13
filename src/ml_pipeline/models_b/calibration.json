@@ -1,0 +1,79 @@
+{
+  "endpoints": {
+    "/api/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 1872
+    },
+    "/api/products": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 1310
+    },
+    "/api/orders": {
+      "body_mean": 40.88308115543329,
+      "body_std": 51.12300162936337,
+      "count": 727
+    },
+    "/api/comments": {
+      "body_mean": 169.282131661442,
+      "body_std": 325.74010549284606,
+      "count": 319
+    },
+    "/api/users/{id}": {
+      "body_mean": 7.711864406779661,
+      "body_std": 21.96997245661283,
+      "count": 295
+    },
+    "/api/users/login": {
+      "body_mean": 58.50993377483444,
+      "body_std": 9.51671067726762,
+      "count": 151
+    },
+    "/api/search": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 220
+    },
+    "/api/v2/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 21
+    },
+    "/api/users/register": {
+      "body_mean": 148.85185185185185,
+      "body_std": 17.052649851006006,
+      "count": 81
+    },
+    "/health": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 509
+    },
+    "/api/users/{id}/orders/{id}/items": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 47
+    },
+    "/api/v1/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 14
+    },
+    "/api/v3/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 22
+    },
+    "/api/files/report.2022.csv": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    }
+  },
+  "rate": {
+    "mean": 9.748199185718759,
+    "std": 7.487259293029169
+  },
+  "n_samples": 6386
+}

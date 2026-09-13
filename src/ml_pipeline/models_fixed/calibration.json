@@ -1,0 +1,94 @@
+{
+  "endpoints": {
+    "/api/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 2473
+    },
+    "/api/users/{id}": {
+      "body_mean": 7.373626373626373,
+      "body_std": 19.890993241267257,
+      "count": 364
+    },
+    "/api/v1/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 20
+    },
+    "/api/comments": {
+      "body_mean": 191.6695652173913,
+      "body_std": 512.7869640728003,
+      "count": 345
+    },
+    "/api/search": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 210
+    },
+    "/api/products": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 1409
+    },
+    "/health": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 623
+    },
+    "/api/orders": {
+      "body_mean": 25.355414012738855,
+      "body_std": 12.9798393152708,
+      "count": 785
+    },
+    "/api/v3/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 21
+    },
+    "/api/users/login": {
+      "body_mean": 43.38095238095238,
+      "body_std": 0.48562090605645575,
+      "count": 147
+    },
+    "/api/users/register": {
+      "body_mean": 118.36559139784946,
+      "body_std": 5.618297576757684,
+      "count": 93
+    },
+    "/api/v2/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 26
+    },
+    "/api/users/{id}/orders/{id}/items": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 54
+    },
+    "/api/files/report.2022.csv": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 6
+    },
+    "/api/files/report.2020.xlsx": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/report.2023.csv": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/report.2023.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    }
+  },
+  "rate": {
+    "mean": 9.982480818414322,
+    "std": 7.495681620132977
+  },
+  "n_samples": 7820
+}

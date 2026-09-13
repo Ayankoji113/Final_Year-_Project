@@ -1,0 +1,134 @@
+{
+  "endpoints": {
+    "/api/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 2124
+    },
+    "/api/orders": {
+      "body_mean": 35.07987220447284,
+      "body_std": 44.554008216096385,
+      "count": 939
+    },
+    "/api/products": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 1401
+    },
+    "/api/search": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 284
+    },
+    "/api/comments": {
+      "body_mean": 133.22837370242215,
+      "body_std": 270.3234825458089,
+      "count": 289
+    },
+    "/api/users/register": {
+      "body_mean": 144.36470588235295,
+      "body_std": 16.844511802206416,
+      "count": 85
+    },
+    "/api/files/rapport final.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 10
+    },
+    "/api/users/login": {
+      "body_mean": 58.2317880794702,
+      "body_std": 9.325918954850545,
+      "count": 151
+    },
+    "/api/users/{id}": {
+      "body_mean": 11.53257790368272,
+      "body_std": 24.22766635206867,
+      "count": 353
+    },
+    "/api/v1/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 20
+    },
+    "/health": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 572
+    },
+    "/api/v2/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 23
+    },
+    "/api/users/{id}/orders/{id}/items": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 43
+    },
+    "/api/files/sales (q1).json": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 7
+    },
+    "/api/files/\u00fcber_report.xlsx": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 12
+    },
+    "/api/files/ann\u00e9e-2026.csv": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 8
+    },
+    "/api/files/notes": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 9
+    },
+    "/api/v3/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 24
+    },
+    "/api/files/report.2022.png": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/report.2025.csv": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/caf\u00e9-menu.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 7
+    },
+    "/api/files/report.2023.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/report.2023.xlsx": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/report.2022.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/report.2024.xlsx": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    }
+  },
+  "rate": {
+    "mean": 10.070698702016017,
+    "std": 7.517059694396847
+  },
+  "n_samples": 7242
+}

@@ -38,14 +38,9 @@ src/ml_pipeline/models_verify/
 src/eval_corpus.json
 src/ml_pipeline/baseline_*.json
 
-# Model-selection scratch: candidate model sets, corpus snapshots and replay
-# corpora from the cross-generator evaluation. The chosen model is copied into
-# models/; the rest are reproducible and too large for the repository.
-src/ml_pipeline/models_b*/
-src/ml_pipeline/models_final/
-src/ml_pipeline/models_fixed/
-src/ml_pipeline/models_wide/
-src/ml_pipeline/models_shipped_prev/
+# Model-selection scratch: corpus snapshots and replay corpora from the
+# cross-generator evaluation. Large and reproducible. The candidate model sets
+# themselves are committed so every compared model can be re-scored.
 src/data/events_training.jsonl.*
 src/eval_seed*.json
 src/clean_eval.json

@@ -1,0 +1,177 @@
+{
+  "endpoints": {
+    "/api/search": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 322,
+      "scores": {
+        "if_lo": -0.10112779232119268,
+        "if_hi": 0.09040570819736915,
+        "ae_lo": 0.0006367926366444606,
+        "ae_hi": 0.027527381192402434,
+        "n": 201
+      }
+    },
+    "/api/products": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 1899,
+      "scores": {
+        "if_lo": -0.1505259885546345,
+        "if_hi": 0.03538260601816705,
+        "ae_lo": 0.0001774235164246802,
+        "ae_hi": 0.00408036463346342,
+        "n": 1082
+      }
+    },
+    "/api/orders": {
+      "body_mean": 37.15141955835962,
+      "body_std": 41.134128218475745,
+      "count": 1268,
+      "scores": {
+        "if_lo": -0.10916103322704629,
+        "if_hi": 0.08990867252036668,
+        "ae_lo": 0.0003851291341756734,
+        "ae_hi": 0.026824224100843883,
+        "n": 908
+      }
+    },
+    "/api/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 1980,
+      "scores": {
+        "if_lo": -0.13622474485965375,
+        "if_hi": 0.037306363163088885,
+        "ae_lo": 0.0002047850112915762,
+        "ae_hi": 0.007389148120125375,
+        "n": 1512
+      }
+    },
+    "/api/comments": {
+      "body_mean": 216.7111111111111,
+      "body_std": 532.2952597265327,
+      "count": 315,
+      "scores": {
+        "if_lo": -0.10060753057243327,
+        "if_hi": 0.08089941230343482,
+        "ae_lo": 0.0008438053281587073,
+        "ae_hi": 0.025890060415330086,
+        "n": 215
+      }
+    },
+    "/api/users/{id}/orders/{id}/items": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 54
+    },
+    "/api/users/{id}": {
+      "body_mean": 11.555882352941177,
+      "body_std": 23.794830026418747,
+      "count": 340,
+      "scores": {
+        "if_lo": -0.06992843535340926,
+        "if_hi": 0.1721755792860863,
+        "ae_lo": 0.00088989043318022,
+        "ae_hi": 0.025616459184732147,
+        "n": 276
+      }
+    },
+    "/api/users/register": {
+      "body_mean": 147.2941176470588,
+      "body_std": 17.05101241045391,
+      "count": 102,
+      "scores": {
+        "if_lo": 0.00724251816708375,
+        "if_hi": 0.08458987019132769,
+        "ae_lo": 0.003766830851667073,
+        "ae_hi": 0.024390391834504744,
+        "n": 66
+      }
+    },
+    "/api/v1/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 20
+    },
+    "/api/users/login": {
+      "body_mean": 57.64102564102564,
+      "body_std": 9.351366771040585,
+      "count": 156,
+      "scores": {
+        "if_lo": -0.023677946123109236,
+        "if_hi": 0.07264085986815785,
+        "ae_lo": 0.002161270210257635,
+        "ae_hi": 0.011165687463752296,
+        "n": 95
+      }
+    },
+    "/api/files/rapport final.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 12
+    },
+    "/api/v2/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 14
+    },
+    "/api/files/ann\u00e9e-2026.csv": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 12
+    },
+    "/health": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 884,
+      "scores": {
+        "if_lo": -0.11723065501026159,
+        "if_hi": 0.024533512062531737,
+        "ae_lo": 8.605245297602355e-05,
+        "ae_hi": 0.013398214098052967,
+        "n": 451
+      }
+    },
+    "/api/files/sales (q1).json": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    },
+    "/api/files/notes": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 12
+    },
+    "/api/v3/products/{id}": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 21
+    },
+    "/api/files/caf\u00e9-menu.pdf": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 9
+    },
+    "/api/files/report.2023.png": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 7
+    },
+    "/api/files/\u00fcber_report.xlsx": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 9
+    },
+    "/api/files/report.2020.png": {
+      "body_mean": 0.0,
+      "body_std": 0.0,
+      "count": 5
+    }
+  },
+  "rate": {
+    "mean": 10.661215218625781,
+    "std": 7.931581401697999
+  },
+  "n_samples": 8805
+}
