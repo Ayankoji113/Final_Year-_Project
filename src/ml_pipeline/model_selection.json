@@ -1,0 +1,136 @@
+{
+  "corpora": [
+    "D:/microapi/src/eval_corpus.json",
+    "D:\\microapi\\src\\eval_seed101.json",
+    "D:\\microapi\\src\\eval_seed202.json",
+    "D:\\microapi\\src\\eval_seed303.json"
+  ],
+  "results": {
+    "models": [
+      {
+        "threshold": 0.25,
+        "fpr": 0.4449,
+        "recall_ml": 1.0,
+        "precision": 0.2871,
+        "f1": 0.4461,
+        "roc_auc": 0.732,
+        "pr_auc": 0.245,
+        "endpoints_ok": 6
+      },
+      {
+        "threshold": 0.25,
+        "fpr": 0.4804,
+        "recall_ml": 1.0,
+        "precision": 0.205,
+        "f1": 0.3402,
+        "roc_auc": 0.6386,
+        "pr_auc": 0.1415,
+        "endpoints_ok": 6
+      },
+      {
+        "threshold": 0.25,
+        "fpr": 0.7009000000000001,
+        "recall_ml": 1.0,
+        "precision": 0.1745,
+        "f1": 0.2971,
+        "roc_auc": 0.4787,
+        "pr_auc": 0.1398,
+        "endpoints_ok": 4
+      },
+      {
+        "threshold": 0.25,
+        "fpr": 0.8247,
+        "recall_ml": 1.0,
+        "precision": 0.1087,
+        "f1": 0.1961,
+        "roc_auc": 0.3888,
+        "pr_auc": 0.1298,
+        "endpoints_ok": 4
+      }
+    ],
+    "models_b3": [
+      {
+        "threshold": 0.815,
+        "fpr": 0.0787,
+        "recall_ml": 0.462,
+        "precision": 0.5122,
+        "f1": 0.4855,
+        "roc_auc": 0.8548,
+        "pr_auc": 0.5123,
+        "endpoints_ok": 10
+      },
+      {
+        "threshold": 0.815,
+        "fpr": 0.0906,
+        "recall_ml": 0.537,
+        "precision": 0.4231,
+        "f1": 0.4731,
+        "roc_auc": 0.8994,
+        "pr_auc": 0.4219,
+        "endpoints_ok": 10
+      },
+      {
+        "threshold": 0.815,
+        "fpr": 0.07980000000000001,
+        "recall_ml": 0.48100000000000004,
+        "precision": 0.4717,
+        "f1": 0.4762,
+        "roc_auc": 0.8999,
+        "pr_auc": 0.4573,
+        "endpoints_ok": 10
+      },
+      {
+        "threshold": 0.815,
+        "fpr": 0.0891,
+        "recall_ml": 0.457,
+        "precision": 0.3404,
+        "f1": 0.3902,
+        "roc_auc": 0.8926,
+        "pr_auc": 0.356,
+        "endpoints_ok": 9
+      }
+    ],
+    "models_b4": [
+      {
+        "threshold": 0.43,
+        "fpr": 0.1358,
+        "recall_ml": 0.879,
+        "precision": 0.5369,
+        "f1": 0.6667,
+        "roc_auc": 0.8358,
+        "pr_auc": 0.5602,
+        "endpoints_ok": 8
+      },
+      {
+        "threshold": 0.43,
+        "fpr": 0.12990000000000002,
+        "recall_ml": 0.976,
+        "precision": 0.4819,
+        "f1": 0.6452,
+        "roc_auc": 0.9196,
+        "pr_auc": 0.6447,
+        "endpoints_ok": 8
+      },
+      {
+        "threshold": 0.43,
+        "fpr": 0.1966,
+        "recall_ml": 0.9420000000000001,
+        "precision": 0.4153,
+        "f1": 0.5765,
+        "roc_auc": 0.8586,
+        "pr_auc": 0.5573,
+        "endpoints_ok": 6
+      },
+      {
+        "threshold": 0.43,
+        "fpr": 0.2184,
+        "recall_ml": 0.914,
+        "precision": 0.2963,
+        "f1": 0.4476,
+        "roc_auc": 0.8723,
+        "pr_auc": 0.4013,
+        "endpoints_ok": 6
+      }
+    ]
+  }
+}

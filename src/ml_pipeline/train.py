@@ -360,6 +360,34 @@ def main():
         print("      absorbs some of this, but widening the traffic generator")
         print("      is the real fix.")
 
+    # ── the guard is now a gate, not a warning ──────────────────────────────
+    #
+    # This warning printed on every run for months and was read past every
+    # time. The cost was measured: a corpus in which body_upper_ratio had
+    # standard deviation 0.0000 made a single capital letter an
+    # unbounded-sigma event, and the model rejected 44% of legitimate traffic.
+    # A warning nobody acts on is not a control.
+    #
+    # STRUCTURALLY_CONSTANT lists features that cannot vary for reasons outside
+    # the generator's control, so failing on them would be unactionable.
+    # path_decode_delta is the only member: Starlette percent-decodes the path
+    # before the gateway sees it, so raw and decoded forms are always identical
+    # and the delta is always zero. Anything else on this list needs a written
+    # justification, not a quiet addition.
+    STRUCTURALLY_CONSTANT = {"path_decode_delta"}
+    blocking = [n for n in dead if n not in STRUCTURALLY_CONSTANT]
+    if blocking and not os.getenv("TRAIN_ALLOW_CONSTANT_FEATURES"):
+        raise SystemExit(
+            "\n  ABORT: these features are constant across the training pool:\n"
+            + "".join(f"    {n}\n" for n in blocking)
+            + "  A feature the corpus never varies is one the model has never\n"
+              "  seen vary, so any production request carrying a different value\n"
+              "  is unbounded-sigma input. This is the single most reliable\n"
+              "  source of false positives in this design and it has now caused\n"
+              "  two measured regressions.\n"
+              "  Fix the traffic generator, or set TRAIN_ALLOW_CONSTANT_FEATURES=1\n"
+              "  to proceed deliberately and record why.\n")
+
     scaler = StandardScaler().fit(Xb)
     Xb_s = scaler.transform(Xb)
 
@@ -374,17 +402,93 @@ def main():
     ae.fit(Xb_s)
     print(f"      Autoencoder best val reconstruction MSE = {ae.best_val:.6f}")
 
-    # Normalisation ranges from TRAINING data only (robust percentiles, so one
-    # outlier cannot compress the whole scale).
-    if_base = -iforest.decision_function(Xb_s)
-    ae_base = ae.score(Xb_s)
-    if_lo, if_hi = float(np.percentile(if_base, 1)), float(np.percentile(if_base, 99.5))
-    ae_lo, ae_hi = float(np.percentile(ae_base, 1)), float(np.percentile(ae_base, 99.5))
+    # ── normalisation ranges: OUT-OF-SAMPLE normal traffic ──────────────────
+    #
+    # These bounds used to be percentiles of `base` - the exact rows the
+    # autoencoder was fitted on. That is in-sample, and it is the same mistake
+    # as reporting accuracy on training data.
+    #
+    # An autoencoder reconstructs its own training set unusually well, so the
+    # error distribution on `base` is artificially tight. Measured on the
+    # shipped model, the resulting ae_hi landed at the 52nd PERCENTILE of real
+    # production traffic: half of all legitimate requests exceeded the ceiling
+    # and were flattened to exactly 1.0, the same score every attack gets.
+    # The raw autoencoder error separates attacks from normal traffic at
+    # AUC 0.887; this clamp was discarding that signal before L4 ever saw it.
+    #
+    # So the scale is now set by normal rows the base detectors have NEVER
+    # seen. `meta` is the first pool that qualifies, and using only its normal
+    # rows keeps attack payloads out of the reference distribution. val and
+    # test stay untouched.
+    ref = [r for r in pools["meta"] if r["y"] == 0]
+    if len(ref) < 200:
+        # Too few out-of-sample normals to set a stable scale. Fall back, but
+        # say so - silently reverting to the in-sample bound would reintroduce
+        # exactly the defect this block exists to prevent.
+        print(f"      *** WARNING: only {len(ref)} out-of-sample normal rows; "
+              f"falling back to in-sample normalisation bounds ***")
+        ref_s = Xb_s
+    else:
+        ref_s = scaler.transform(X(ref))
+    if_ref = -iforest.decision_function(ref_s)
+    ae_ref = ae.score(ref_s)
+    if_lo, if_hi = float(np.percentile(if_ref, 1)), float(np.percentile(if_ref, 99.5))
+    ae_lo, ae_hi = float(np.percentile(ae_ref, 1)), float(np.percentile(ae_ref, 99.5))
+    ae_in = ae.score(Xb_s)
+    print(f"      normalisation reference: {len(ref_s):,} out-of-sample normal rows")
+    print(f"        ae_hi = {ae_hi:.6g}   (in-sample would have given "
+          f"{float(np.percentile(ae_in, 99.5)):.6g})")
+    print(f"        fraction of the reference pool that saturates: "
+          f"{float((ae_ref > ae_hi).mean()):.2%}")
+
+    # ── per-endpoint normalisation bounds ───────────────────────────────────
+    #
+    # One global ceiling cannot serve endpoints whose normal error differs by
+    # three orders of magnitude: some saturate at 1.0 on every request, which
+    # gives benign and hostile traffic the identical score, while others never
+    # approach the ceiling at all. Give each sufficiently-sampled endpoint its
+    # own range, computed on the same OUT-OF-SAMPLE pool as the global bounds.
+    #
+    # The gateway falls back to the global bounds for any endpoint missing
+    # here, so an unfamiliar backend is never worse off than it is today.
+    per_ep = defaultdict(list)
+    for i, r in enumerate(ref):
+        per_ep[r["template"]].append(i)
+    scored_eps = 0
+    for tpl, idx in per_ep.items():
+        if len(idx) < Baseline.MIN_SCORE_SAMPLES or tpl not in baseline.endpoints:
+            continue
+        ii, aa = if_ref[idx], ae_ref[idx]
+        lo_i, hi_i = float(np.percentile(ii, 1)), float(np.percentile(ii, 99.5))
+        lo_a, hi_a = float(np.percentile(aa, 1)), float(np.percentile(aa, 99.5))
+        if hi_i - lo_i < 1e-9 or hi_a - lo_a < 1e-12:
+            continue        # degenerate range; the global bounds are safer
+        baseline.endpoints[tpl]["scores"] = {
+            "if_lo": lo_i, "if_hi": hi_i, "ae_lo": lo_a, "ae_hi": hi_a,
+            "n": len(idx),
+        }
+        scored_eps += 1
+    print(f"      per-endpoint score bounds written for {scored_eps} of "
+          f"{len(baseline.endpoints)} endpoints "
+          f"(min {Baseline.MIN_SCORE_SAMPLES} samples each)")
 
     def meta_features(pool):
         Xs = scaler.transform(X(pool))
-        i = np.clip((-iforest.decision_function(Xs) - if_lo) / (if_hi - if_lo + 1e-9), 0, 1)
-        a = np.clip((ae.score(Xs) - ae_lo) / (ae_hi - ae_lo + 1e-9), 0, 1)
+        if_raw = -iforest.decision_function(Xs)
+        ae_raw = ae.score(Xs)
+        i = np.clip((if_raw - if_lo) / (if_hi - if_lo + 1e-9), 0, 1)
+        a = np.clip((ae_raw - ae_lo) / (ae_hi - ae_lo + 1e-9), 0, 1)
+        # TRAIN/SERVE SYMMETRY. The gateway normalises against the endpoint's
+        # own bounds wherever the baseline has them, so the meta-learner must
+        # be fitted on exactly the same quantity. Fitting it on globally
+        # normalised scores and serving per-endpoint ones would be the same
+        # class of silent drift as the n_flags defect.
+        for k, row in enumerate(pool):
+            s = baseline.score_stats(row.get("template", ""))
+            if s is None:
+                continue
+            i[k] = np.clip((if_raw[k] - s["if_lo"]) / (s["if_hi"] - s["if_lo"] + 1e-9), 0, 1)
+            a[k] = np.clip((ae_raw[k] - s["ae_lo"]) / (s["ae_hi"] - s["ae_lo"] + 1e-9), 0, 1)
         # L1's continuous rate contribution, reconstructed the same way the
         # gateway does it at inference time.
         r = np.clip(np.array([x["win"] for x in pool]) / max(1, config.RATE_LIMIT), 0, 1)

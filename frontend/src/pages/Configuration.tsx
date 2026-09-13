@@ -165,6 +165,63 @@ export function Configuration() {
         </Table>
       </Panel>
 
+      {h?.ml && (
+        <Panel
+          title="ML enforcement rollout"
+          subtitle="Detection and enforcement are separate decisions. Detection is what gets recorded and shown; enforcement is what returns 403."
+          actions={
+            <Pill tone={h.ml.enforcing ? 'ok' : 'mute'}>
+              {h.ml.enforcing ? 'ML can block' : 'ML observes only'}
+            </Pill>
+          }
+        >
+          <Table>
+            <Row
+              label="GUARD_ML_ENFORCE_PERCENT"
+              value={`${h.ml.rollout_percent}% of clients`}
+              tone="live"
+              source="health.ml.rollout_percent"
+              note="For WHOM. This is the single authoritative off switch: 0 means no ML verdict blocks anything, whatever the thresholds say."
+            />
+            <Row
+              label="GUARD_ML_DETECTION_THRESHOLD"
+              value={h.ml.threshold_detect.toFixed(6)}
+              tone="live"
+              source="health.ml.threshold_detect"
+              note="What counts as a detection, and therefore what this console shows."
+            />
+            <Row
+              label="GUARD_ML_ENFORCEMENT_THRESHOLD"
+              value={h.ml.threshold_enforce.toFixed(6)}
+              tone="live"
+              source="health.ml.threshold_enforce"
+              note="How sure before a 403. Clamped so it can never sit below the detection threshold, which would block requests that were never logged as detections."
+            />
+            <Row
+              label="GUARD_ML_ENFORCE_ENDPOINTS"
+              value={h.ml.enforce_endpoints.length ? h.ml.enforce_endpoints.join(', ') : 'all endpoints eligible'}
+              tone="live"
+              source="health.ml.enforce_endpoints"
+              note="False-positive rates differ sharply per endpoint, so enforcement is enabled per endpoint rather than globally."
+            />
+            <Row
+              label="GUARD_ML_ENFORCE_SALT"
+              value={h.ml.salted ? 'set' : 'EMPTY'}
+              tone="live"
+              source="health.ml.salted"
+              note={h.ml.salted ? undefined : 'Unsalted canary membership is publicly computable, so a client could pick a source address outside the enforced cohort.'}
+            />
+            <Row
+              label="GUARD_ML_REQUIRE_RATE_STATE"
+              value={String(h.ml.require_rate_state)}
+              tone="live"
+              source="health.ml.require_rate_state"
+              note="With Redis down the rate features read zero, so the probability comes from degraded input. True means detect on it but never 403 on it."
+            />
+          </Table>
+        </Panel>
+      )}
+
       {config.state === 'loading' && <Loading label="Reading config.py" />}
 
       <Panel

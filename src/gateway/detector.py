@@ -34,6 +34,12 @@ ALLOW = "allow"
 BLOCK = "block"
 
 
+def _minmax(value: float, lo: float, hi: float) -> float:
+    """Clip a raw detector score into [0, 1] against an explicit range."""
+    return float(np.clip((float(value) - float(lo)) / (float(hi) - float(lo) + 1e-9),
+                         0.0, 1.0))
+
+
 @dataclass
 class Decision:
     action: str = ALLOW
@@ -170,8 +176,19 @@ class Detector:
             ae_raw = float(self.autoencoder.score(Xs)[0])
             rate_raw = self._rate_score(ev)
 
-            if_n = self._norm(if_raw, "if_lo", "if_hi")
-            ae_n = self._norm(ae_raw, "ae_lo", "ae_hi")
+            # Per-endpoint normalisation where the baseline has enough samples
+            # for this template, global bounds otherwise. Normal reconstruction
+            # error spans three orders of magnitude across endpoints, so one
+            # global ceiling saturates some of them completely - and a
+            # saturated score gives benign and hostile requests the same
+            # value. See Baseline.score_stats() for the full reasoning.
+            per_ep = self.baseline.score_stats(ev.get("template", ""))
+            if per_ep is not None:
+                if_n = _minmax(if_raw, per_ep["if_lo"], per_ep["if_hi"])
+                ae_n = _minmax(ae_raw, per_ep["ae_lo"], per_ep["ae_hi"])
+            else:
+                if_n = self._norm(if_raw, "if_lo", "if_hi")
+                ae_n = self._norm(ae_raw, "ae_lo", "ae_hi")
 
             # L4 - the only thing that decides.
             p = float(self.meta_lr.predict_proba([[rate_raw, if_n, ae_n]])[0, 1])

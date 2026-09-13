@@ -55,6 +55,26 @@ export function SystemHealth() {
 
   return (
     <div className="space-y-4">
+      {h && (h.degraded_reasons?.length ?? 0) > 0 && (
+        <div className="rounded-lg border border-warn-500/30 bg-warn-500/5 p-4">
+          <p className="text-xs font-semibold text-warn-400">
+            Gateway reports status &quot;{h.status}&quot;
+          </p>
+          <ul className="mt-2 space-y-1">
+            {h.degraded_reasons!.map((r) => (
+              <li key={r} className="text-xs text-slate-b">
+                &bull; {r}
+              </li>
+            ))}
+          </ul>
+          <SourceNote>
+            The gateway still answers HTTP 200 here on purpose. The process is alive and Layer 1 is still enforcing, so
+            failing a liveness probe would restart a gateway that is doing useful work. Liveness is the status code;
+            readiness is this list.
+          </SourceNote>
+        </div>
+      )}
+
       {health.state === 'error' && !h && (
         <ErrorState
           message={health.error ?? 'unknown error'}
@@ -66,8 +86,18 @@ export function SystemHealth() {
         <HealthTile
           icon={ShieldHalf}
           name="Gateway"
-          state={h ? 'Healthy' : health.state === 'loading' ? 'Checking' : 'Unreachable'}
-          tone={h ? 'ok' : health.state === 'loading' ? 'mute' : 'bad'}
+          state={
+            h
+              ? (h.degraded_reasons?.length ?? 0) > 0
+                ? 'Degraded'
+                : 'Healthy'
+              : health.state === 'loading'
+                ? 'Checking'
+                : 'Unreachable'
+          }
+          tone={
+            h ? ((h.degraded_reasons?.length ?? 0) > 0 ? 'warn' : 'ok') : health.state === 'loading' ? 'mute' : 'bad'
+          }
           detail={h ? `status "${h.status}" · up ${formatUptime(h.uptime_s)}` : (health.error ?? 'no response')}
           source="GET /__guard/health"
         />
@@ -128,6 +158,50 @@ export function SystemHealth() {
           source="health.calibrated / calibration_samples"
         />
       </div>
+
+      {h?.ml && (
+        <Panel
+          title="ML enforcement and the automatic brake"
+          subtitle="The brake measures the would-block rate across everything that reached the models, so it is meaningful even at 0% rollout"
+          actions={
+            <Pill tone={h.ml.brake.engaged ? 'bad' : h.ml.enforcing ? 'ok' : 'mute'}>
+              {h.ml.brake.engaged ? 'Brake engaged' : h.ml.enforcing ? 'Enforcing' : 'Observing'}
+            </Pill>
+          }
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <dl>
+              <KV label="Canary rollout" value={`${h.ml.rollout_percent}% of clients`}
+                  note="Deterministic per client, so nobody flaps between blocked and allowed as it ramps." />
+              <KV label="Detection / enforcement threshold"
+                  value={`${h.ml.threshold_detect.toFixed(4)} / ${h.ml.threshold_enforce.toFixed(4)}`} />
+              <KV label="Endpoints ML may block"
+                  value={h.ml.enforce_endpoints.length ? h.ml.enforce_endpoints.join(', ') : 'all eligible'} />
+            </dl>
+            <dl>
+              <KV
+                label="Live would-block rate"
+                value={`${(h.ml.brake.live_would_block_rate * 100).toFixed(1)}%`}
+                note={`over ${formatInt(h.ml.brake.live_samples)} requests from ${formatInt(h.ml.brake.live_clients)} clients in the last ${h.ml.brake.window_secs}s. Ceiling is ${(h.ml.brake.max_rate * 100).toFixed(0)}%.`}
+              />
+              <KV
+                label="Brake"
+                value={h.ml.brake.engaged ? 'ENGAGED' : h.ml.brake.enabled ? 'armed' : 'disabled'}
+                note={
+                  h.ml.brake.engaged
+                    ? `Tripped at ${(h.ml.brake.tripped_rate * 100).toFixed(1)}% across ${h.ml.brake.tripped_clients} clients. It never self-clears: reset it deliberately once the cause is dealt with.`
+                    : 'It latches and requires a manual reset, so there is no hysteresis to tune and no oscillation to have.'
+                }
+              />
+            </dl>
+          </div>
+          <SourceNote>
+            A single client can never trip the brake alone: it requires a minimum number of
+            distinct clients, so an attacker cannot switch the ML layer off with volume. Engaging
+            it only ever removes ML blocking; Layer 1 signatures and rate limits keep enforcing.
+          </SourceNote>
+        </Panel>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Protection mode" subtitle="What the gateway is currently enforcing">

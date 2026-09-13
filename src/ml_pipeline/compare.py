@@ -79,15 +79,34 @@ def build():
                           batch=256, patience=15, seed=SEED,
                           noise=AE_NOISE).fit(Xb_s, verbose=False)
 
-    if_b = -iforest.decision_function(Xb_s)
-    ae_b = ae.score(Xb_s)
+    # Normalisation bounds come from OUT-OF-SAMPLE normal rows, mirroring
+    # train.py. Measuring an autoencoder's error on the rows it was fitted on
+    # produces an artificially tight scale, and the resulting ceiling landed
+    # near the median of real traffic - see the long note in train.py. This
+    # file must track train.py's modelling or the comparison stops being a
+    # comparison.
+    ref = [r for r in pools["meta"] if r["y"] == 0]
+    ref_s = scaler.transform(X(ref)) if len(ref) >= 200 else Xb_s
+    if_b = -iforest.decision_function(ref_s)
+    ae_b = ae.score(ref_s)
     if_lo, if_hi = np.percentile(if_b, 1), np.percentile(if_b, 99.5)
     ae_lo, ae_hi = np.percentile(ae_b, 1), np.percentile(ae_b, 99.5)
 
     def scores(pool):
         Xs = scaler.transform(X(pool))
-        i = np.clip((-iforest.decision_function(Xs) - if_lo) / (if_hi - if_lo + 1e-9), 0, 1)
-        a = np.clip((ae.score(Xs) - ae_lo) / (ae_hi - ae_lo + 1e-9), 0, 1)
+        if_raw = -iforest.decision_function(Xs)
+        ae_raw = ae.score(Xs)
+        i = np.clip((if_raw - if_lo) / (if_hi - if_lo + 1e-9), 0, 1)
+        a = np.clip((ae_raw - ae_lo) / (ae_hi - ae_lo + 1e-9), 0, 1)
+        # Mirrors train.py's per-endpoint normalisation. McNemar pairs models on
+        # identical rows, so this file has to score them the way train.py does
+        # or the comparison stops comparing the deployed thing.
+        for k, row in enumerate(pool):
+            st = baseline.score_stats(row.get("template", ""))
+            if st is None:
+                continue
+            i[k] = np.clip((if_raw[k] - st["if_lo"]) / (st["if_hi"] - st["if_lo"] + 1e-9), 0, 1)
+            a[k] = np.clip((ae_raw[k] - st["ae_lo"]) / (st["ae_hi"] - st["ae_lo"] + 1e-9), 0, 1)
         r = np.clip(np.expm1([x["f"].get("win_log_count", 0.0) for x in pool])
                     / max(1, config.RATE_LIMIT), 0, 1)
         return r, i, a

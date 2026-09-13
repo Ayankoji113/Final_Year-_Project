@@ -1,0 +1,667 @@
+<title>The MicroAPI Guard Logbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap">
+
+<style>
+/* ------------------------------------------------------------------
+   A logbook, not a brochure. The record of what was done, why, what it
+   measured, and where it went wrong. Graphite ground with a single
+   verified-green accent - green reads as "measured", and the semantic
+   red/amber stay reserved for findings rather than decoration.
+   Distinct from ZORO 1.0's instrument blue and the feature case's
+   indigo, because these are three different kinds of document.
+   ------------------------------------------------------------------ */
+:root {
+  --paper:   #f3f5f3;
+  --surface: #ffffff;
+  --sunk:    #e8ece9;
+  --ink:     #15191a;
+  --ink-2:   #495250;
+  --ink-3:   #79817f;
+  --rule:    #d5dcd8;
+  --rule-2:  #e4eae6;
+  --accent:  #0f6b5c;
+  --accent-2:#15907d;
+  --ok:      #1f7a4d;
+  --ok-bg:   #e2f2e9;
+  --warn:    #8a6100;
+  --warn-bg: #fbf1da;
+  --bad:     #b3261e;
+  --bad-bg:  #fbe7e6;
+  --shadow:  0 1px 2px rgba(21,25,26,.05), 0 14px 34px -22px rgba(21,25,26,.35);
+
+  --sans:  'Chivo', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+:root:not([data-theme="light"]) {
+  @media (prefers-color-scheme: dark) {
+    --paper:   #0f1211;
+    --surface: #171b1a;
+    --sunk:    #1f2423;
+    --ink:     #e9efec;
+    --ink-2:   #b2bcb8;
+    --ink-3:   #7e8885;
+    --rule:    #2b3230;
+    --rule-2:  #222827;
+    --accent:  #5bd0b8;
+    --accent-2:#7fe0cb;
+    --ok:      #57c98b;
+    --ok-bg:   #12291d;
+    --warn:    #e0ad4a;
+    --warn-bg: #2a2113;
+    --bad:     #f2796f;
+    --bad-bg:  #2c1614;
+    --shadow:  0 1px 2px rgba(0,0,0,.5), 0 16px 40px -26px rgba(0,0,0,.95);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:   #0f1211;
+  --surface: #171b1a;
+  --sunk:    #1f2423;
+  --ink:     #e9efec;
+  --ink-2:   #b2bcb8;
+  --ink-3:   #7e8885;
+  --rule:    #2b3230;
+  --rule-2:  #222827;
+  --accent:  #5bd0b8;
+  --accent-2:#7fe0cb;
+  --ok:      #57c98b;
+  --ok-bg:   #12291d;
+  --warn:    #e0ad4a;
+  --warn-bg: #2a2113;
+  --bad:     #f2796f;
+  --bad-bg:  #2c1614;
+  --shadow:  0 1px 2px rgba(0,0,0,.5), 0 16px 40px -26px rgba(0,0,0,.95);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--serif); font-size: 17px; line-height: 1.62;
+  padding-inline: 20px; padding-block: 0;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.col { max-width: 66ch; }
+
+header.mast { padding-block: 50px 22px; border-bottom: 1px solid var(--rule); margin-bottom: 30px; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 14px; }
+h1 { font-family: var(--sans); font-weight: 700; font-size: clamp(2.1rem, 5.2vw, 3.3rem);
+  line-height: 1.04; letter-spacing: -.03em; margin: 0 0 12px; text-wrap: balance; }
+.dek { font-size: 1.14rem; color: var(--ink-2); margin: 0; max-width: 60ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 20px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.meta b { color: var(--ink-2); font-weight: 500; }
+
+/* headline figures */
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  border-radius: 2px; overflow: hidden; margin-bottom: 42px; }
+.fig { background: var(--surface); padding: 18px 16px; }
+.fig .n { font-family: var(--mono); font-size: clamp(1.5rem,3.8vw,2rem); font-weight: 600;
+  letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; display: block; }
+.fig .l { font-family: var(--sans); font-size: 12px; color: var(--ink-2);
+  margin-top: 8px; line-height: 1.3; display: block; }
+.n.good { color: var(--ok); } .n.bad { color: var(--bad); } .n.acc { color: var(--accent); }
+
+/* phases: numbered because this genuinely is a sequence - each step
+   depended on the measurement from the one before it */
+.phase { display: grid; grid-template-columns: 3rem 1fr; gap: 16px;
+  border-top: 1px solid var(--rule); padding-top: 18px; margin-bottom: 38px; }
+.pnum { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent);
+  padding-top: 4px; }
+h2 { font-family: var(--sans); font-size: clamp(1.2rem,2.6vw,1.55rem); font-weight: 600;
+  letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+.when { font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 14px; }
+h3 { font-family: var(--sans); font-size: .95rem; font-weight: 600; margin: 20px 0 6px;
+  color: var(--ink); }
+h3.q { color: var(--accent); font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .13em; text-transform: uppercase; margin: 18px 0 6px; }
+p { margin: 0 0 13px; } ul, ol { margin: 0 0 14px; padding-left: 1.1rem; }
+li { margin-bottom: 7px; }
+code { font-family: var(--mono); font-size: .83em; background: var(--sunk);
+  padding: .1em .34em; border-radius: 2px; color: var(--ink-2); }
+strong { font-weight: 600; }
+
+.tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--surface); margin: 0 0 16px; }
+table { border-collapse: collapse; width: 100%; min-width: 480px;
+  font-family: var(--sans); font-size: 13px; }
+caption { caption-side: top; text-align: left; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); padding: 11px 13px 2px; }
+th, td { padding: 7px 13px; text-align: left; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+thead th { font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+  border-bottom: 1px solid var(--rule); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.f { font-family: var(--mono); font-size: 12px; }
+tr.hl td { background: var(--ok-bg); }
+
+.pill { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 6px; border-radius: 2px; white-space: nowrap; display: inline-block; }
+.pill.g { background: var(--ok-bg); color: var(--ok); }
+.pill.y { background: var(--warn-bg); color: var(--warn); }
+.pill.r { background: var(--bad-bg); color: var(--bad); }
+
+.note { border-left: 2px solid var(--accent); background: var(--surface);
+  padding: 15px 19px; margin: 0 0 18px; }
+.note .h { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--accent); font-weight: 600; display: block; margin-bottom: 7px; }
+.note p:last-child { margin-bottom: 0; }
+.note.wrong { border-left-color: var(--warn); }
+.note.wrong .h { color: var(--warn); }
+.note.red { border-left-color: var(--bad); } .note.red .h { color: var(--bad); }
+
+pre { font-family: var(--mono); font-size: 11.5px; line-height: 1.55; background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 2px; padding: 13px 15px;
+  overflow-x: auto; margin: 0 0 16px; color: var(--ink-2); }
+pre b { color: var(--ink); font-weight: 600; }
+
+.final { background: var(--surface); border: 2px solid var(--accent); border-radius: 2px;
+  padding: 28px; box-shadow: var(--shadow); margin-bottom: 34px; }
+.final h2 { font-weight: 700; font-size: clamp(1.4rem,3.4vw,2rem); letter-spacing: -.025em; margin-bottom: 14px; }
+footer { border-top: 1px solid var(--rule); padding-block: 20px 54px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .phase { grid-template-columns: 2.1rem 1fr; gap: 10px; }
+  .final { padding: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="kicker">MicroAPI Guard &middot; Complete work record &middot; 2026-09-12</div>
+  <h1>The MicroAPI Guard Logbook</h1>
+  <p class="dek">Everything done on this project, in the order it happened: what was built, why,
+  what each change measured, and the three times a hypothesis turned out to be wrong.</p>
+  <div class="meta">
+    <span>Console <b>8 pages, shipped</b></span>
+    <span>Tests <b>112 passing</b></span>
+    <span>Defects fixed <b>3 in the gateway</b></span>
+    <span>Committed <b>console only</b></span>
+  </div>
+</header>
+
+<div class="figs">
+  <div class="fig"><span class="n bad">61.3%</span><span class="l">Shipped model's false-positive rate on independent traffic</span></div>
+  <div class="fig"><span class="n good">17.0%</span><span class="l">After fixing the training data alone</span></div>
+  <div class="fig"><span class="n good">0.00%</span><span class="l">Layer 1's false-positive rate, across 508 requests</span></div>
+  <div class="fig"><span class="n acc">0.8716</span><span class="l">Best model's ROC-AUC, up from 0.5595</span></div>
+  <div class="fig"><span class="n acc">1,877 / 0</span><span class="l">ML verdicts recorded / enforced in the live demo</span></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">01</div>
+  <div>
+    <h2>Build the security console</h2>
+    <div class="when">Starting point &middot; the repository had no frontend</div>
+    <div class="col">
+      <h3 class="q">Why</h3>
+      <p>The gateway made decisions nobody could see. A four-layer pipeline that blocks some
+      requests, flags others and forwards the rest is impossible to reason about from a JSONL
+      file.</p>
+
+      <h3 class="q">How</h3>
+      <p>React, TypeScript, Vite, Tailwind. Eight pages: Overview, Live Traffic, Threats,
+      Threat Investigation, ML Intelligence, Request Logs, System Health, Configuration.</p>
+      <p>Two constraints shaped the architecture. The gateway sends no CORS headers &mdash;
+      deliberately, it is a reverse proxy for an API, not a browser app &mdash; so the console is
+      served same-origin with Vite proxying <code>/__guard</code>. And the gateway does not serve
+      its event log over HTTP, so rather than add an endpoint just to feed a dashboard, the Vite
+      dev server reads the file directly.</p>
+      <p>Three rules the UI holds itself to: a block is attributed to the layer the gateway
+      recorded and never inferred from an HTTP status; "would block" is its own state, because an
+      ML verdict under <code>enforce-l1</code> is recorded but forwarded; and a metric the backend
+      does not expose says so rather than being filled in.</p>
+
+      <h3 class="q">Result</h3>
+      <p>46 files, ~5,100 lines, committed as <code>042c68a</code>. All eight routes verified in a
+      real browser with no console errors. <strong>No backend file was touched.</strong></p>
+    </div>
+    <div class="note">
+      <span class="h">Two bugs found by testing, not by reading</span>
+      <p>The log reader dropped one record per poll, because it trimmed a partial first line even
+      when the cursor was already on a line boundary. And a chart axis clipped its leading digit,
+      showing "600" where the value was 1600.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">02</div>
+  <div>
+    <h2>Audit whether ML should block</h2>
+    <div class="when">ZORO 1.0 &middot; docs/ZORO_1.0.md</div>
+    <div class="col">
+      <h3 class="q">Why</h3>
+      <p>The gateway runs <code>GUARD_MODE=enforce-l1</code>: signatures and rate limits block,
+      ML verdicts are recorded only. The question was whether to promote to full
+      <code>enforce</code>.</p>
+
+      <h3 class="q">How</h3>
+      <p>No theory. Ground-truth traffic through the live gateway, with labels known by
+      construction because the harness generated them.</p>
+
+      <h3 class="q">Result</h3>
+      <p><strong>Keep <code>enforce-l1</code>.</strong> ML enforcement would have blocked between
+      31% and 88% of legitimate traffic depending on endpoint mix. Separability measured at chance.
+      Layer 1, by contrast, produced zero false positives while blocking 68% of attacks.</p>
+    </div>
+    <div class="note wrong">
+      <span class="h">Wrong turn #1, corrected</span>
+      <p>The first report named the calibration variance as the root cause &mdash; a half-byte
+      standard deviation on the login endpoint. Tested by intervention, that was <strong>wrong</strong>:
+      patching it changed nothing, and a variance floor made it slightly worse. Ablating all 34
+      features one at a time left every false positive in place. No single feature caused it.</p>
+    </div>
+    <div class="note wrong">
+      <span class="h">Wrong turn #2, corrected</span>
+      <p>The report also stated a single false-positive rate of 57.1% and an AUC of 0.479 "below
+      chance". Both were over-precise. Re-measured across independent samples, the rate is
+      mix-dependent (31&ndash;88%) and the AUC is simply "about 0.5". The single-draw number was an
+      anecdote, which is exactly the error the project later set out to document.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">03</div>
+  <div>
+    <h2>Fix three defects in the gateway</h2>
+    <div class="when">Found by testing failure paths rather than reading them</div>
+    <div class="col">
+      <h3 class="q">Why</h3>
+      <p>An audit that only reads code finds what the author already knew. Each failure mode was
+      actually triggered.</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Defect</th><th>Evidence</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>A dead Redis reported as healthy</strong></td>
+            <td>Redis stopped, 60 requests against a 40-per-5s burst limit, <strong>zero blocked</strong>; health still said <code>"healthy"</code></td>
+            <td><code>status</code> now derives from what works, with a <code>degraded_reasons</code> list. HTTP stays 200 so the liveness probe does not restart a working gateway</td>
+          </tr>
+          <tr>
+            <td><strong>A bad model file stopped the gateway booting</strong></td>
+            <td>Startup gate tested <code>ENFORCING</code>, true for <em>both</em> enforce modes &mdash; so a corrupt pickle took down the signature layer too, in a mode that never blocks on ML</td>
+            <td>Tests <code>ML_ENFORCING</code>. Full <code>enforce</code> still refuses; <code>enforce-l1</code> starts and warns loudly</td>
+          </tr>
+          <tr>
+            <td><strong><code>n_flags</code> silently dead</strong></td>
+            <td><code>detector.inspect()</code> copies the event dict before setting it, so every vector ever logged carried <code>n_flags = 0</code> while the model scored with the true value</td>
+            <td>One line before logging. One feature of 34 had been dead in every model this project trained</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p>The third is the most interesting: it is train/serve skew that in-distribution evaluation
+      is <em>structurally incapable</em> of detecting, because the feature was constant on both
+      sides of the split.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">04</div>
+  <div>
+    <h2>Find the real cause</h2>
+    <div class="when">The finding the whole project now rests on</div>
+    <div class="col">
+      <h3 class="q">How</h3>
+      <p>After the feature ablation came back empty, the question changed from "which feature" to
+      "which requests". Comparing per-endpoint reconstruction error between the training corpus and
+      live traffic gave a 1,230&times; ratio on <code>/api/products</code> and 803&times; on login.
+      Then one direct test settled it.</p>
+    </div>
+    <div class="tw">
+      <table>
+        <caption>Same endpoint, same client, same intent</caption>
+        <thead><tr><th>Request</th><th class="n">Query params</th><th class="n">Score (threshold 0.25)</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td class="f">GET /api/products</td><td class="n">0</td><td class="n"><strong>0.9948</strong></td><td><span class="pill r">would block</span></td></tr>
+          <tr><td class="f">GET /api/products?page=2&amp;limit=20</td><td class="n">2</td><td class="n">0.0003</td><td><span class="pill g">allowed</span></td></tr>
+          <tr><td class="f">GET /api/comments</td><td class="n">0</td><td class="n"><strong>0.9979</strong></td><td><span class="pill r">would block</span></td></tr>
+          <tr><td class="f">GET /api/comments?page=1&amp;limit=20</td><td class="n">2</td><td class="n">0.0002</td><td><span class="pill g">allowed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p><strong>The model learned the generator's URL habits, not what an attack is.</strong> The
+      traffic simulator emitted <code>/api/products</code> as <code>?page=N&amp;limit=M</code> on
+      every one of 3,260 sessions and never bare, so omitting an optional parameter became more
+      anomalous than most real attacks.</p>
+      <p><code>common/features.py</code> deliberately excludes the URL to prevent exactly this
+      &mdash; its own comment explains that the previous pipeline one-hot encoded the path and
+      learned "path == /wp-admin means attack". The shortcut returned through
+      <code>q_param_count</code>, <code>q_total_len</code> and <code>q_special_ratio</code>, which
+      together fingerprint how each endpoint is normally called.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">05</div>
+  <div>
+    <h2>Build a way to measure honestly</h2>
+    <div class="when">Phase A &middot; docs/BASELINE.md</div>
+    <div class="col">
+      <h3 class="q">Why</h3>
+      <p>Every pool <code>train.py</code> builds &mdash; base, meta, val, test &mdash; comes from
+      one generator. A model can score F1 0.99 on held-out data and fail on anything else, and no
+      existing measurement could tell the difference. There is no production traffic available.</p>
+
+      <h3 class="q">How</h3>
+      <p><code>validate_client.py</code>: a second traffic client written from the backend's API
+      contract, sharing <strong>no code, no word list and no payload builder</strong> with the
+      generator. Disjoint identity pools, different pagination conventions, different body-field
+      subsets, independently written attacks. Independence is asserted by test, not by intention.</p>
+      <p><code>evaluate_live.py</code>: replays a labelled corpus through the gateway and reports
+      false positives overall <em>and per endpoint</em>, recall split into what Layer 1 already
+      catches versus what only ML can, separability, autoencoder saturation, and latency.</p>
+    </div>
+    <div class="tw">
+      <table>
+        <caption>Locked baseline &middot; 622 requests, 618 paired</caption>
+        <thead><tr><th>Metric</th><th class="n">Value</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td><strong>Layer 1 false positives</strong></td><td class="n"><strong>0 / 508 &middot; 0.00%</strong></td></tr>
+          <tr><td>ML false positives</td><td class="n">341 / 508 &middot; 67.13%</td></tr>
+          <tr><td>Attacks ML caught that L1 missed</td><td class="n">91 / 91 &middot; 100%</td></tr>
+          <tr><td>Attacks missed by both</td><td class="n">0</td></tr>
+          <tr><td>ROC-AUC / PR-AUC</td><td class="n">0.7391 / 0.2556</td></tr>
+          <tr><td>Detection latency p50 / p95</td><td class="n">11.41 / 15.26 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note wrong">
+      <span class="h">Two measurement bugs, both mine, both caught</span>
+      <p><strong>Pacing.</strong> The first run went at 6 requests/second against a 240-per-minute
+      limit. 352 of 632 requests were rate-blocked at Layer 1, never reached the models, and
+      silently vanished from the measurement rather than erroring.</p>
+      <p><strong>Pairing.</strong> Matching corpus rows to log entries in order pulled in leftovers
+      from a previous run, producing a confident "Layer 1 blocks 16.67% of legitimate traffic" for
+      requests Layer 1 had never touched. The client now stamps its send window into the manifest.</p>
+      <p>Both produced plausible-looking numbers. That is the argument for anchoring a measurement
+      rather than eyeballing it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">06</div>
+  <div>
+    <h2>Fix the training data, not the model</h2>
+    <div class="when">Phase B &middot; the intervention experiment</div>
+    <div class="col">
+      <h3 class="q">How</h3>
+      <ul>
+        <li><strong>B1&ndash;B4.</strong> Every endpoint emitting one canonical shape was widened.
+        <code>/api/products</code> went from 1 query shape to 20; <code>/api/orders</code> from
+        always-bare to 8; POST bodies from always-complete to 4&ndash;6 field combinations. A
+        deliberate bare-call branch replaced relying on four independent coin flips, which produced
+        the bare shape only 12 times in 3,260 requests. All three session profiles &mdash; 42% of
+        generated sessions &mdash; were routed through the same helpers instead of emitting literal
+        strings.</li>
+        <li><strong>B5.</strong> Per-endpoint score normalisation. Normal reconstruction error
+        spans three orders of magnitude between endpoints, so one global ceiling saturates some
+        completely &mdash; and a saturated score gives benign and hostile requests the identical
+        value. Same baseline-relative construction as <code>body_size_z</code>, so
+        <code>FEATURE_NAMES</code> is untouched.</li>
+      </ul>
+
+      <h3 class="q">Result</h3>
+      <p>Changing <strong>only the training data</strong>, with no change to the model, features,
+      architecture or hyperparameters:</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Model</th><th class="n">False positives</th><th class="n">Precision</th><th class="n">F1</th><th class="n">ROC-AUC</th><th class="n">AE saturation</th></tr></thead>
+        <tbody>
+          <tr><td>Shipped</td><td class="n">44.49%</td><td class="n">0.287</td><td class="n">0.4461</td><td class="n">0.7320</td><td class="n">32.9%</td></tr>
+          <tr class="hl"><td>After widening</td><td class="n"><strong>13.58%</strong></td><td class="n"><strong>0.537</strong></td><td class="n"><strong>0.6667</strong></td><td class="n"><strong>0.8358</strong></td><td class="n"><strong>11.8%</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <span class="h">The counter-intuitive result</span>
+      <p>Recall fell, and it is not a regression. The shipped model's apparent 100% recall was a
+      <em>blanket endpoint flag</em> &mdash; the same phenomenon producing its 44% false positives.
+      Removing the blanket removed both. The two numbers were never independent, and the detections
+      that vanished were never discriminative.</p>
+      <p>The sharpest evidence: a NoSQL injection against <code>/api/users/login</code> scores
+      <strong>0.436</strong> while a genuine login scores <strong>0.936</strong>. The attack looks
+      more normal than real traffic, so no threshold can separate them &mdash; they are ordered the
+      wrong way round.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">07</div>
+  <div>
+    <h2>Make the failure impossible to repeat</h2>
+    <div class="when">Phase C &middot; guards, not warnings</div>
+    <div class="col">
+      <ul>
+        <li><strong>C1.</strong> <code>tests/test_generate.py</code>, 15 tests asserting
+        distributional properties of the generator: every endpoint in &ge;3 query shapes, the bare
+        form at &ge;5% of traffic, POST bodies varying, unusual HTTP methods exercised, and
+        <em>normal traffic never tripping a BLOCK rule</em>. Verified it can actually fail by
+        neutering the variation helpers.</li>
+        <li><strong>C2.</strong> The zero-variance warning became a hard abort. It had printed on
+        every run for months and been read past every time, while costing two measured regressions.
+        A warning nobody acts on is not a control.</li>
+        <li><strong>C3.</strong> Normalisation bounds moved from in-sample to out-of-sample. They
+        were percentiles of the exact rows the autoencoder was fitted on &mdash; the same mistake as
+        reporting accuracy on training data. The resulting ceiling sat at the
+        <strong>52nd percentile of real traffic</strong>, flattening half of all legitimate requests
+        to the score every attack gets.</li>
+        <li><strong>C4.</strong> <code>calibrate.py</code> now re-derives those bounds, globally and
+        per endpoint, from the deployment's own traffic. It previously reused them from
+        <code>decision.json</code>, so a new backend inherited the training corpus's scale.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">08</div>
+  <div>
+    <h2>Choose the model on repeated draws</h2>
+    <div class="when">Phase D &middot; rule fixed before the numbers were seen</div>
+    <div class="col">
+      <h3 class="q">Why fix the rule first</h3>
+      <p>Choosing the criterion after seeing the results is cherry-picking. The rule: decide on
+      cross-generator performance, treating in-distribution numbers as diagnostic only; rank by
+      ROC-AUC because it is threshold-independent; break ties on recall at the project's own 1%
+      budget; and judge on four draws, not one.</p>
+    </div>
+    <div class="tw">
+      <table>
+        <caption>Four independent client draws</caption>
+        <thead><tr><th>Model</th><th class="n">FPR mean</th><th class="n">FPR range</th><th class="n">ROC-AUC</th><th class="n">Recall</th><th class="n">F1</th></tr></thead>
+        <tbody>
+          <tr><td>Shipped</td><td class="n">61.27%</td><td class="n">44.5&ndash;82.5%</td><td class="n">0.5595</td><td class="n">100%</td><td class="n">0.320</td></tr>
+          <tr class="hl"><td><strong>models_b4</strong></td><td class="n">17.02%</td><td class="n">13.0&ndash;21.8%</td><td class="n"><strong>0.8716</strong></td><td class="n"><strong>92.8%</strong></td><td class="n"><strong>0.584</strong></td></tr>
+          <tr><td>models_final</td><td class="n">9.71%</td><td class="n">7.1&ndash;16.4%</td><td class="n">0.8331</td><td class="n">48.0%</td><td class="n">0.437</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p>The shipped model is far worse than any single draw suggested. On one draw its ROC-AUC fell
+      to <strong>0.3888 &mdash; below chance</strong>, ranking attacks <em>below</em> legitimate
+      traffic. The earlier 44.49% was the optimistic end of its range.</p>
+      <p>The tie-break was decisive. At a 1% false-positive budget, <code>models_b3</code> catches
+      0.5% of attacks and <code>models_b4</code> catches 13.4%.</p>
+    </div>
+    <div class="note wrong">
+      <span class="h">Wrong turn #3, corrected</span>
+      <p>Predicted that the weaker gate-passing model underperformed because its corpus was
+      half-size. Generated a full-size one &mdash; 20,654 normal rows against 14,849 &mdash; and it
+      was <em>still</em> weaker. Corpus size was not the explanation; the extra coverage fixes
+      genuinely cost detection, because teaching the model that bulk quantities and unusual methods
+      are normal also teaches it that attacks resembling them are normal.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">09</div>
+  <div>
+    <h2>Make ML blocking safe to switch on</h2>
+    <div class="when">Phase E &middot; verified live</div>
+    <div class="col">
+      <h3 class="q">Why</h3>
+      <p>Detection is a property of the model; enforcement is a property of the deployment. They
+      were the same boolean, which made turning ML blocking on all-or-nothing with no reverse gear.</p>
+      <ul>
+        <li><strong>E0.</strong> Admin authentication. <code>/__guard/*</code> sat on the only
+        published port with none. A safety brake anyone on the network can clear is worse than no
+        brake, because an operator believes they are protected.</li>
+        <li><strong>E1.</strong> Separate detection and enforcement thresholds, a per-endpoint
+        allowlist, and a canary percentage. <strong>One knob carries "never"</strong> &mdash; the
+        percentage &mdash; because two never-defaults create the failure where an operator sets one,
+        sees nothing, and loosens both.</li>
+        <li><strong>E3.</strong> Deterministic canary buckets, so a client never flaps and ramping
+        only ever adds clients.</li>
+        <li><strong>E4.</strong> An automatic brake measuring the would-block rate across
+        everything that reached the models &mdash; so the figure is meaningful <em>at 0% rollout</em>,
+        which is how you learn whether enforcement is safe before anyone gets a 403. A minimum
+        distinct-client count means one attacker can never trip it alone.</li>
+        <li><strong>E5&ndash;E6.</strong> <code>enforce_gate</code> on every event, an <code>ml</code>
+        block in health and stats, and all of it surfaced on the console.</li>
+      </ul>
+    </div>
+    <pre><b>defaults</b>        mode=enforce-l1  enforcing_ml=False  rollout=0%   identical to before
+<b>enforcement on</b>  /api/products  403  layer=L4-meta  gate='enforce'
+                /api/comments  200  layer=L4-meta  gate='endpoint-not-enabled'
+                /.env          403  layer=L1-rules gate='l1'      L1 unaffected
+<b>brake engaged</b>   /api/products  200  ML stops, L1 keeps blocking, status=degraded
+<b>after reset</b>     enforcing_ml=True, status=healthy</pre>
+    <div class="col">
+      <p>A unit test caught that resetting the brake would immediately re-engage, because the stale
+      window still exceeded the ceiling. <code>reset()</code> now clears the measurement window too.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">10</div>
+  <div>
+    <h2>An expressivity limit, not a data problem</h2>
+    <div class="when">docs/feature_case.html</div>
+    <div class="col">
+      <p>Three attack families are invisible to the detector and retraining cannot fix it. The 34
+      features measure <em>shape</em> &mdash; length, depth, entropy, parameter count. Shape is not
+      where these attacks live.</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Family</th><th>What makes it hostile</th><th>Candidate feature</th><th class="n">AUC</th><th class="n">99th pct benign</th></tr></thead>
+        <tbody>
+          <tr><td class="f">massassign</td><td>extra field <strong>names</strong></td><td class="f">body_unknown_field_ratio</td><td class="n">1.000</td><td class="n">0.0000</td></tr>
+          <tr><td class="f">nosql</td><td>an object where a string belongs &mdash; a <strong>type</strong></td><td class="f">body_nonscalar_ratio</td><td class="n">1.000</td><td class="n">0.0000</td></tr>
+          <tr><td class="f">enum</td><td>a huge parameter <strong>value</strong></td><td class="f">max_numeric_magnitude</td><td class="n">1.000</td><td class="n">6.22</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p>Each blind family is separated perfectly by a single feature, and a different one each
+      time &mdash; what an <em>expressive</em> gap looks like rather than a statistical one. Three of
+      the four candidates read exactly zero at the 99th percentile of legitimate traffic.</p>
+      <p>Adding them breaks the feature contract and forces a coordinated retrain, so it is a
+      decision rather than something to slip in.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="phase">
+  <div class="pnum">11</div>
+  <div>
+    <h2>Reframe the paper</h2>
+    <div class="when">manuscript/REFRAME_PLAN.md &middot; IEEE conference</div>
+    <div class="col">
+      <p>The existing manuscript's abstract already ended with <em>"flagging a transfer risk that
+      recall-only reporting hides."</em> That was a caveat. It is now a measurement, and it is the
+      most novel thing this project has produced.</p>
+      <p>New framing: <strong>single-generator evaluation systematically overstates learned API
+      anomaly detection</strong>. The system becomes the instrument; the finding becomes the paper.
+      Nothing is discarded &mdash; the session-grouped splits, withheld families and FPR budget are
+      what make the result credible, because the in-distribution number was obtained under
+      <em>stricter</em> discipline than the literature usually applies and still failed to transfer.</p>
+      <p>Still needed: a confidence interval on the transfer gap, McNemar for the new model, and
+      three figures.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="final">
+  <h2>Where it stands</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Item</th><th>State</th></tr></thead>
+      <tbody>
+        <tr><td>Console, 8 pages</td><td><span class="pill g">committed</span> <code>042c68a</code></td></tr>
+        <tr><td>Three gateway defect fixes</td><td><span class="pill y">tested, uncommitted</span></td></tr>
+        <tr><td>Phases A, B, C, E</td><td><span class="pill y">complete, uncommitted</span></td></tr>
+        <tr><td>Phase D gate (1% FPR globally)</td><td><span class="pill r">unmet</span> &mdash; 7&ndash;9.5 of 13 endpoints qualify</td></tr>
+        <tr><td>Model finalised</td><td><span class="pill r">blocked</span> &mdash; see below</td></tr>
+        <tr><td>Test suite</td><td><span class="pill g">112 passing</span>, 15 pre-existing host errors</td></tr>
+        <tr><td>Paper</td><td><span class="pill y">planned, not written</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Two decisions are yours.</strong></p>
+  <p><strong>The model.</strong> <code>models_b4</code> measures best on independent traffic but its
+  corpus fails the C2 variance gate written in this same project. The gate-passing alternative is
+  weaker. I will not weaken a security control to make a preferred model pass, nor ship a model the
+  project's own quality control rejects without saying so.</p>
+  <p style="margin-bottom:0"><strong>The commits.</strong> Everything except the console is
+  uncommitted. The three gateway defect fixes stand on their own merit, independent of any ML
+  argument, and are the most valuable thing here.</p>
+</div>
+
+<div class="note red">
+  <span class="h">On the false positives, since it is the obvious worry</span>
+  <p>In the live demo the gateway handled 2,324 requests: 2,029 allowed, 295 blocked by signature
+  rules, <strong>1,877 ML detections recorded and zero enforced</strong>.</p>
+  <p>That last pair is not a failure. It is the architecture working. A bad model raised 1,877
+  verdicts and the layered design acted on none of them, so 2,029 legitimate requests went through
+  untouched. A project that reports F1 0.99 and stops is one that did not look outside its own
+  generator. This one looked, measured the gap, found the mechanism, and fixed most of it by
+  intervention.</p>
+</div>
+
+<footer>
+  Companion documents: <code>docs/ZORO_1.0.md</code> (enforcement audit),
+  <code>docs/BASELINE.md</code> (locked baseline and reproduction steps),
+  <code>docs/feature_case.html</code> (the feature-set decision),
+  <code>manuscript/REFRAME_PLAN.md</code> (paper). Every figure here was measured on this machine
+  against the running gateway; none is estimated.
+</footer>
+
+</div>

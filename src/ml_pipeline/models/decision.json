@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "trained_at": "2026-09-02T19:13:06",
+  "trained_at": "2026-09-12T10:38:19",
   "seed": 42,
   "feature_names": [
     "body_log_size",
@@ -38,21 +38,21 @@
     "is_write",
     "n_flags"
   ],
-  "threshold": 0.25000000000000006,
-  "if_lo": -0.12966203523536735,
-  "if_hi": 0.15879168714530104,
-  "ae_lo": 3.409475917882194e-05,
-  "ae_hi": 0.012303357616361862,
+  "threshold": 0.4300000000000001,
+  "if_lo": -0.13627169411173234,
+  "if_hi": 0.14482743738910636,
+  "ae_lo": 2.550601813646533e-05,
+  "ae_hi": 0.012467360818655687,
   "meta_inputs": [
     "rate",
     "isolation_forest",
     "autoencoder"
   ],
   "pool_sizes": {
-    "base": 3695,
-    "meta": 3611,
-    "val": 2031,
-    "test": 2127
+    "base": 6386,
+    "meta": 4148,
+    "val": 2819,
+    "test": 3753
   },
   "novel_families": [
     "cmdi",
@@ -66,21 +66,21 @@
     "if_trees": 300,
     "meta": "hgb"
   },
-  "val_f1": 0.9895,
+  "val_f1": 0.9111,
   "test_metrics": {
-    "accuracy": 0.9939,
-    "precision": 0.9828,
-    "recall": 1.0,
-    "f1": 0.9913,
-    "fpr": 0.0094,
-    "fnr": 0.0,
-    "tp": 742,
-    "tn": 1372,
-    "fp": 13,
-    "fn": 0
+    "accuracy": 0.8231,
+    "precision": 0.9236,
+    "recall": 0.4793,
+    "f1": 0.6311,
+    "fpr": 0.0183,
+    "fnr": 0.5207,
+    "tp": 568,
+    "tn": 2521,
+    "fp": 47,
+    "fn": 617
   },
-  "test_roc_auc": 0.9991,
-  "test_pr_auc": 0.9982,
-  "zero_day_recall": 1.0,
-  "unique_feature_ratio": 0.1518
+  "test_roc_auc": 0.84,
+  "test_pr_auc": 0.7861,
+  "zero_day_recall": 0.5842,
+  "unique_feature_ratio": 0.2362
 }

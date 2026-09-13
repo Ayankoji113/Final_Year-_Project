@@ -84,10 +84,11 @@ cannot drift between fitting and serving. Three consequences that are easy to br
 - **L1-blocked rows are excluded from the ML stages** and re-attached for the end-to-end
   number, because in production they never reach a model.
 
-Single-seed metrics are not reportable. The 10-seed intervals in `models/validation.json`
-are the honest figures and are much weaker than the seed-42 numbers in `decision.json`
-(F1 0.957 [0.940–0.976] vs 0.991; zero-day recall 0.794 [0.668–0.914] vs 1.000).
-Seed 42 is the *best* of the ten runs and reaches recall 1.000 — never quote that alone.
+Single-seed metrics are not reportable, and neither are in-distribution ones on their own.
+Every pool comes from one generator, so held-out test scores overstate real performance:
+the previous model scored F1 0.991 in-distribution and ROC-AUC 0.56 on independent
+traffic. Judge models with `traffic_simulator/validate_client.py` +
+`ml_pipeline/model_select.py`. `models/validation.json` still describes the previous model.
 
 ## Hyperparameters and the search
 
@@ -107,8 +108,9 @@ so the real zero-day families never inform a hyperparameter choice.
 **Both drivers must pass `MODELS_DIR`** — `tune.py` writes to `models_tuning/`,
 `validate.py` to `models_validate/`. Without it every retrain overwrites `models/` and the
 shipped artefacts become whichever seed happened to run last. This happened: `models/` was
-committed at seed 10 from a `validate.py` run. The live models are seed 42; regenerate them
-with `TRAIN_EVENT_LOG=data/events_training.jsonl TRAIN_SEED=42 python ml_pipeline/train.py`.
+committed at seed 10 from a `validate.py` run. The live model is `models_b4`, chosen on
+independent traffic; `models/MODEL_SELECTION.md` records why, its known defects (its corpus
+fails the C2 variance gate) and how to reproduce or roll it back.
 
 ## compare.py duplicates the pipeline
 

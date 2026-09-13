@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common import config, features           # noqa: E402
 from common import normalize as nz            # noqa: E402
 from gateway.detector import BLOCK, Detector  # noqa: E402
+from gateway.enforcement import MLGate      # noqa: E402
 from gateway.ratelimit import RateLimiter     # noqa: E402
 
 # Headers that must not be relayed: they describe THIS hop's connection.
@@ -42,9 +43,11 @@ SENSITIVE_HEADERS = {"authorization", "cookie", "proxy-authorization", "x-api-ke
 ADMIN_PREFIX = "/__guard"   # namespaced so it cannot shadow a backend route
 
 detector = Detector()
+mlgate = MLGate(detector)
 state = {"redis": None, "http": None, "limiter": None, "queue": None,
          "writer": None, "started": 0.0}
-stats = {"total": 0, "allowed": 0, "blocked": 0, "by_layer": {}}
+stats = {"total": 0, "allowed": 0, "blocked": 0, "by_layer": {},
+         "ml_detected": 0, "ml_enforced": 0, "ml_gate": {}}
 
 
 # ── client identity ───────────────────────────────────────────────────────────
@@ -103,14 +106,28 @@ async def lifespan(app: FastAPI):
     state["started"] = time.time()
 
     ok = detector.load()
-    if not ok and config.ENFORCING:
-        # Starting an enforcing gateway with no anomaly models would advertise
-        # protection it cannot deliver. Misconfiguration must be loud.
+    if not ok and config.ML_ENFORCING:
+        # Under full `enforce` an unloadable model IS a misconfiguration worth
+        # refusing to start over: the operator asked the gateway to block on
+        # anomaly scores it cannot compute, so booting would advertise
+        # protection it cannot deliver.
+        #
+        # Under enforce-l1 it is not. That mode never blocks on an ML verdict,
+        # so a corrupt pickle costs nothing it was relying on - and refusing to
+        # boot would turn a degraded security component into a total outage,
+        # taking the signature and rate layers down with it. Those layers are
+        # the ones measured to work. Start, enforce them, and say loudly that
+        # anomaly coverage is missing.
         raise RuntimeError(
             f"GUARD_MODE=enforce but models could not be loaded from "
             f"{config.MODELS_DIR}. Train them, mount them, or start with "
-            f"GUARD_MODE=monitor."
+            f"GUARD_MODE=enforce-l1 (L1 keeps enforcing) or GUARD_MODE=monitor."
         )
+    if not ok:
+        print(f"[gateway] *** WARNING: models could not be loaded from "
+              f"{config.MODELS_DIR}. L1 signatures and rate limits still "
+              f"enforce; anomaly detection is UNAVAILABLE. "
+              f"/__guard/health reports status=degraded. ***")
 
     print(f"[gateway] mode={config.MODE} models={'loaded' if ok else 'ABSENT'} "
           f"baseline={'ready' if detector.baseline.ready else 'uncalibrated'}")
@@ -176,13 +193,59 @@ async def health():
             redis_ok = bool(await state["redis"].ping())
         except Exception:
             redis_ok = False
+
+    # A security control that has stopped working must not be reported as
+    # healthy. Losing Redis silently disables every rate-based control - the
+    # sliding window, the burst limit and the endpoint-breadth signal - while
+    # requests keep flowing, so an operator watching only `status` would see a
+    # green gateway with no flood or brute-force protection at all.
+    #
+    # The HTTP code stays 200 on purpose: the process IS alive and the
+    # signature layer IS still enforcing, so failing the container's liveness
+    # probe here would restart a gateway that is doing useful work. Liveness is
+    # the status code; readiness is this payload.
+    degraded = []
+    if not redis_ok:
+        degraded.append("redis_unavailable: rate limiting and burst detection "
+                        "are NOT being enforced")
+    if not detector.loaded:
+        degraded.append("models_not_loaded: anomaly detection (L2/L3/L4) is "
+                        "not running; only L1 applies")
+    elif not detector.baseline.ready:
+        degraded.append("uncalibrated: baseline-relative features fall back to "
+                        "zero, so anomaly scores are unreliable")
+
+    ml = mlgate.snapshot()
+    if ml["brake"]["engaged"]:
+        degraded.append(
+            f"ml_brake_engaged: ML enforcement disabled automatically after the "
+            f"would-block rate reached {ml['brake']['tripped_rate']:.1%} over "
+            f"{config.ML_BRAKE_WINDOW_SECS}s across "
+            f"{ml['brake']['tripped_clients']} clients. L1 signatures and rate "
+            f"limits still enforce. Clear with POST /__guard/reload?ml_brake=reset")
+    if ml["rollout_percent"] > 0 and not ml["salted"]:
+        degraded.append(
+            "ml_canary_unsalted: GUARD_ML_ENFORCE_SALT is empty, so canary "
+            "membership is predictable and a client can choose a source address "
+            "outside the enforced cohort")
+    if ml["rollout_percent"] > 0 and not config.ADMIN_TOKEN:
+        degraded.append(
+            "admin_unauthenticated: GUARD_ADMIN_TOKEN is empty while ML "
+            "enforcement is active, so anyone who can reach this port can clear "
+            "the safety brake")
+
     return {
-        "status": "healthy",
+        "status": "degraded" if degraded else "healthy",
+        "degraded_reasons": degraded,
         "mode": config.MODE,
+        # A live capability, not a config readback: it goes false when the brake
+        # engages. With defaults it evaluates identically to config.ML_ENFORCING
+        # in all three modes, so nothing regresses.
+        "ml": ml,
         # Makes the L1/L4 enforcement split explicit: under enforce-l1 the
         # deterministic layers block while the statistical layer only observes.
         "enforcing_rules": config.ENFORCING,
-        "enforcing_ml": config.ML_ENFORCING,
+        "enforcing_ml": ml["enforcing"],
         "models_loaded": detector.loaded,
         "calibrated": detector.baseline.ready,
         "calibration_samples": detector.baseline.n_samples,
@@ -194,14 +257,42 @@ async def health():
 
 @app.get(ADMIN_PREFIX + "/stats")
 async def get_stats():
-    return {**stats, "trained_at": (detector.meta or {}).get("trained_at")}
+    return {**stats, "trained_at": (detector.meta or {}).get("trained_at"),
+            "ml": mlgate.snapshot()}
+
+
+def _admin_ok(request: Request) -> bool:
+    """Empty GUARD_ADMIN_TOKEN preserves today's unauthenticated behaviour."""
+    if not config.ADMIN_TOKEN:
+        return True
+    return request.headers.get("x-guard-admin-token", "") == config.ADMIN_TOKEN
 
 
 @app.post(ADMIN_PREFIX + "/reload")
-async def reload_models():
-    """Hot-reload models and baseline after retraining or recalibration."""
+async def reload_models(request: Request, ml_brake: str = ""):
+    """Hot-reload models and baseline, and optionally drive the ML brake.
+
+    `?ml_brake=engage` is the zero-restart kill switch for ML enforcement;
+    `?ml_brake=reset` re-arms it. These are parameters rather than new routes
+    because this is already the one endpoint that mutates ML state at runtime.
+
+    A plain reload deliberately does NOT clear an engaged brake: swapping the
+    model is exactly when you may want the brake still holding. Clearing it has
+    to be a separate, deliberate act.
+    """
+    if not _admin_ok(request):
+        return _json(401, {"error": "admin token required"})
+    out = {}
+    if ml_brake == "engage":
+        mlgate.brake.engage()
+        out["brake"] = "engaged"
+    elif ml_brake == "reset":
+        mlgate.brake.reset()
+        out["brake"] = "reset"
+    elif ml_brake:
+        return _json(400, {"error": "ml_brake must be 'engage' or 'reset'"})
     ok = detector.load()
-    return {"reloaded": ok, "calibrated": detector.baseline.ready}
+    return {"reloaded": ok, "calibrated": detector.baseline.ready, **out}
 
 
 # ── proxy ─────────────────────────────────────────────────────────────────────
@@ -263,9 +354,36 @@ async def proxy(request: Request, full_path: str):
     # L1 verdicts (signatures, rate limits) are deterministic and enforced in
     # both enforce modes. L4 verdicts are statistical and only enforced once the
     # operator has promoted the deployment to full `enforce` - see config.MODE.
+    ev["n_flags"] = len(decision.rule_hits)
+
+    # L1 verdicts keep their own literal expression. Nothing in the enforcement
+    # module is consulted here, so a bug in it can only ever stop ML blocking -
+    # never weaken a signature or a rate limit, and never over-block.
     ml_verdict = decision.layer in ("L4-meta", "L-error")
-    enforced = decision.action == BLOCK and config.ENFORCING and (
-        config.ML_ENFORCING or not ml_verdict)
+    enforced = decision.action == BLOCK and config.ENFORCING and not ml_verdict
+    gate, canary = ("l1" if enforced else ""), None
+
+    chash = hash_client(cid)
+
+    # Brake bookkeeping for every request that actually reached the models.
+    # Wrapped because telemetry must never be able to change a verdict.
+    if decision.layer in ("", "L4-meta", "L-error"):
+        try:
+            mlgate.observe(chash, decision.probability)
+        except Exception:
+            pass
+
+    if decision.action == BLOCK and ml_verdict:
+        stats["ml_detected"] += 1
+        try:
+            gate, canary = mlgate.evaluate(decision.probability, template, cid,
+                                           rate.degraded)
+        except Exception:
+            gate, canary = "error", None      # a gate failure never blocks
+        enforced = config.ENFORCING and gate == "enforce"
+        if enforced:
+            stats["ml_enforced"] += 1
+        stats["ml_gate"][gate] = stats["ml_gate"].get(gate, 0) + 1
     stats["total"] += 1
     if enforced:
         stats["blocked"] += 1
@@ -282,7 +400,7 @@ async def proxy(request: Request, full_path: str):
     def log(status, latency_ms, detect_ms):
         enqueue({
             "ts": round(time.time(), 3),
-            "client": hash_client(cid),
+            "client": chash,
             "method": request.method,
             "template": template,
             "path_len": len(path),
@@ -306,6 +424,11 @@ async def proxy(request: Request, full_path: str):
             "degraded": decision.degraded or rate.degraded,
             # The numeric feature vector IS the training data. Raw bodies are
             # never written, so login passwords cannot leak through the log.
+            # Additive. Every existing field keeps its name and meaning, so the
+            # trainer and the console are unaffected.
+            "enforce_gate": gate,
+            "enforce_threshold": round(mlgate.enforcement_threshold(), 6),
+            "canary": canary,
             "features": _feature_snapshot(ev),
             "label": label,
         })

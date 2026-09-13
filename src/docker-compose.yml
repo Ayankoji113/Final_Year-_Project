@@ -71,6 +71,21 @@ services:
       GUARD_TRUSTED_PROXY_HOPS: "${GUARD_TRUSTED_PROXY_HOPS:-0}"
       GUARD_TRUST_LABEL_HEADER: "${GUARD_TRUST_LABEL_HEADER:-false}"
       GUARD_MAX_BODY_BYTES: "1048576"
+      # ── ML enforcement rollout ────────────────────────────────────────────
+      # Every default here reproduces the pre-rollout behaviour exactly, so an
+      # unconfigured deployment is unchanged. GUARD_ADMIN_TOKEN must be set
+      # before GUARD_ML_ENFORCE_PERCENT is raised above 0: the brake reset
+      # lives on the admin port, and a latch anyone can clear is worse than no
+      # latch.
+      GUARD_ADMIN_TOKEN: "${GUARD_ADMIN_TOKEN:-}"
+      GUARD_ML_ENFORCE_PERCENT: "${GUARD_ML_ENFORCE_PERCENT:--1}"
+      GUARD_ML_ENFORCE_ENDPOINTS: "${GUARD_ML_ENFORCE_ENDPOINTS:-}"
+      GUARD_ML_ENFORCE_SALT: "${GUARD_ML_ENFORCE_SALT:-}"
+      GUARD_ML_DETECTION_THRESHOLD: "${GUARD_ML_DETECTION_THRESHOLD:--1}"
+      GUARD_ML_ENFORCEMENT_THRESHOLD: "${GUARD_ML_ENFORCEMENT_THRESHOLD:--1}"
+      GUARD_ML_REQUIRE_RATE_STATE: "${GUARD_ML_REQUIRE_RATE_STATE:-true}"
+      GUARD_ML_BRAKE_ENABLED: "${GUARD_ML_BRAKE_ENABLED:-true}"
+      GUARD_ML_BRAKE_MAX_RATE: "${GUARD_ML_BRAKE_MAX_RATE:-0.05}"
     depends_on:
       redis:
         condition: service_healthy

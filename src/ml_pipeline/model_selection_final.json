@@ -1,0 +1,136 @@
+{
+  "corpora": [
+    "D:/microapi/src/eval_corpus.json",
+    "D:/microapi/src/eval_seed101.json",
+    "D:/microapi/src/eval_seed202.json",
+    "D:/microapi/src/eval_seed303.json"
+  ],
+  "results": {
+    "models": [
+      {
+        "threshold": 0.25,
+        "fpr": 0.4449,
+        "recall_ml": 1.0,
+        "precision": 0.2871,
+        "f1": 0.4461,
+        "roc_auc": 0.732,
+        "pr_auc": 0.245,
+        "endpoints_ok": 6
+      },
+      {
+        "threshold": 0.25,
+        "fpr": 0.4804,
+        "recall_ml": 1.0,
+        "precision": 0.205,
+        "f1": 0.3402,
+        "roc_auc": 0.6386,
+        "pr_auc": 0.1415,
+        "endpoints_ok": 6
+      },
+      {
+        "threshold": 0.25,
+        "fpr": 0.7009000000000001,
+        "recall_ml": 1.0,
+        "precision": 0.1745,
+        "f1": 0.2971,
+        "roc_auc": 0.4787,
+        "pr_auc": 0.1398,
+        "endpoints_ok": 4
+      },
+      {
+        "threshold": 0.25,
+        "fpr": 0.8247,
+        "recall_ml": 1.0,
+        "precision": 0.1087,
+        "f1": 0.1961,
+        "roc_auc": 0.3888,
+        "pr_auc": 0.1298,
+        "endpoints_ok": 4
+      }
+    ],
+    "models_b4": [
+      {
+        "threshold": 0.43,
+        "fpr": 0.1358,
+        "recall_ml": 0.879,
+        "precision": 0.5369,
+        "f1": 0.6667,
+        "roc_auc": 0.8358,
+        "pr_auc": 0.5602,
+        "endpoints_ok": 8
+      },
+      {
+        "threshold": 0.43,
+        "fpr": 0.12990000000000002,
+        "recall_ml": 0.976,
+        "precision": 0.4819,
+        "f1": 0.6452,
+        "roc_auc": 0.9196,
+        "pr_auc": 0.6447,
+        "endpoints_ok": 8
+      },
+      {
+        "threshold": 0.43,
+        "fpr": 0.1966,
+        "recall_ml": 0.9420000000000001,
+        "precision": 0.4153,
+        "f1": 0.5765,
+        "roc_auc": 0.8586,
+        "pr_auc": 0.5573,
+        "endpoints_ok": 6
+      },
+      {
+        "threshold": 0.43,
+        "fpr": 0.2184,
+        "recall_ml": 0.914,
+        "precision": 0.2963,
+        "f1": 0.4476,
+        "roc_auc": 0.8723,
+        "pr_auc": 0.4013,
+        "endpoints_ok": 6
+      }
+    ],
+    "models_final": [
+      {
+        "threshold": 0.795,
+        "fpr": 0.0748,
+        "recall_ml": 0.429,
+        "precision": 0.5065,
+        "f1": 0.4643,
+        "roc_auc": 0.7981,
+        "pr_auc": 0.4546,
+        "endpoints_ok": 9
+      },
+      {
+        "threshold": 0.795,
+        "fpr": 0.0785,
+        "recall_ml": 0.61,
+        "precision": 0.4902,
+        "f1": 0.5435,
+        "roc_auc": 0.8915,
+        "pr_auc": 0.5817,
+        "endpoints_ok": 9
+      },
+      {
+        "threshold": 0.795,
+        "fpr": 0.0712,
+        "recall_ml": 0.423,
+        "precision": 0.4681,
+        "f1": 0.4444,
+        "roc_auc": 0.8566,
+        "pr_auc": 0.5372,
+        "endpoints_ok": 11
+      },
+      {
+        "threshold": 0.795,
+        "fpr": 0.1638,
+        "recall_ml": 0.457,
+        "precision": 0.2192,
+        "f1": 0.2963,
+        "roc_auc": 0.7863,
+        "pr_auc": 0.3796,
+        "endpoints_ok": 9
+      }
+    ]
+  }
+}

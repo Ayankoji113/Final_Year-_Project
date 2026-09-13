@@ -78,3 +78,79 @@ FAIL_CLOSED        = _b("GUARD_FAIL_CLOSED", True)
 # ── Calibration ───────────────────────────────────────────────────────────────
 CALIBRATION_MIN_SAMPLES = _i("GUARD_CALIBRATION_MIN_SAMPLES", 2000)
 CALIBRATION_TARGET_FPR  = _f("GUARD_CALIBRATION_TARGET_FPR", 0.01)
+
+# ── Admin authentication ──────────────────────────────────────────────────────
+# /__guard/* sits on the only published port with no authentication. That was
+# tolerable while `reload` merely re-read model files. It stops being tolerable
+# the moment a runtime kill switch and a brake reset live on the same surface:
+# a safety latch anyone on the network can clear is worse than no latch, because
+# an operator believes they are protected.
+#
+# Empty preserves today's behaviour exactly. Set it before raising
+# GUARD_ML_ENFORCE_PERCENT above zero.
+ADMIN_TOKEN = os.getenv("GUARD_ADMIN_TOKEN", "")
+
+# ── ML enforcement rollout ────────────────────────────────────────────────────
+# Detection and enforcement are separate decisions. Detection is what the model
+# records and the console shows; enforcement is what returns 403. Collapsing
+# them into one boolean is why turning ML blocking on has been all-or-nothing
+# with no reverse gear.
+#
+# -1 is the "not configured" sentinel throughout, because 0.0 is meaningful.
+# With everything unset, all three existing GUARD_MODE values behave exactly as
+# they do today: monitor and enforce-l1 resolve to 0% rollout, enforce to 100%.
+
+# What counts as a DETECTION. Precedence: this > decision.json > ML_THRESHOLD.
+ML_DETECTION_THRESHOLD   = _f("GUARD_ML_DETECTION_THRESHOLD", -1.0)
+
+# How sure before a 403. -1 means "same as detection", i.e. historical
+# behaviour. Clamped at use so it can never sit below the detection threshold.
+ML_ENFORCEMENT_THRESHOLD = _f("GUARD_ML_ENFORCEMENT_THRESHOLD", -1.0)
+
+# FOR WHOM, as a percentage of clients, 0-100. This is the single authoritative
+# "never enforce" control. One knob carries that meaning on purpose: giving both
+# the threshold and the percentage a never-default creates the failure where an
+# operator sets the percentage, sees nothing happen, assumes the canary is
+# broken, and loosens both at once.
+ML_ENFORCE_PERCENT       = _f("GUARD_ML_ENFORCE_PERCENT", -1.0)
+
+# Which endpoint templates ML may block, comma-separated. Empty means "all that
+# pass the other gates". Per-endpoint rollout is the practical route here: the
+# false-positive rate is per-endpoint, not global, and several endpoints measure
+# 0% while others measure 100%.
+ML_ENFORCE_ENDPOINTS = tuple(
+    t.strip() for t in os.getenv("GUARD_ML_ENFORCE_ENDPOINTS", "").split(",") if t.strip())
+
+# Salts the client -> canary bucket map. Empty means membership is computable by
+# anyone who can read this file, so a client could choose a source address
+# outside the enforced cohort. Set a random per-deployment value.
+ML_ENFORCE_SALT = os.getenv("GUARD_ML_ENFORCE_SALT", "")
+
+# L4 consumes Redis-backed rate features. With Redis down they read zero, so the
+# probability is computed from knowingly degraded input. Detect on it; do not
+# 403 on it. Setting this false restores literal pre-existing behaviour.
+ML_REQUIRE_RATE_STATE = _b("GUARD_ML_REQUIRE_RATE_STATE", True)
+
+# ── Automatic brake ───────────────────────────────────────────────────────────
+# Measures the would-block rate across everything that reached the model, not
+# the enforced rate across the canary. That way the ceiling means the same thing
+# at 1% rollout as at 100%, and the metric is observable at 0% rollout - so an
+# operator can watch it for a week before anyone receives a 403.
+ML_BRAKE_ENABLED     = _b("GUARD_ML_BRAKE_ENABLED", True)
+ML_BRAKE_WINDOW_SECS = _i("GUARD_ML_BRAKE_WINDOW_SECS", 300)
+ML_BRAKE_MIN_SAMPLES = _i("GUARD_ML_BRAKE_MIN_SAMPLES", 200)
+# Anti-abuse: one attacker is one distinct client and must never be able to trip
+# the brake alone, however much traffic they send.
+ML_BRAKE_MIN_CLIENTS = _i("GUARD_ML_BRAKE_MIN_CLIENTS", 5)
+ML_BRAKE_MAX_RATE    = _f("GUARD_ML_BRAKE_MAX_RATE", 0.05)   # 5x the FPR budget
+
+
+def _rollout_percent() -> float:
+    """Resolve the canary percentage, inheriting from GUARD_MODE when unset."""
+    if ML_ENFORCE_PERCENT < 0:
+        return 100.0 if ML_ENFORCING else 0.0
+    return min(100.0, max(0.0, ML_ENFORCE_PERCENT))
+
+
+ML_ROLLOUT_PERCENT = _rollout_percent()
+ML_ROLLOUT_BPS = int(round(ML_ROLLOUT_PERCENT * 100))   # basis points, 0..10000

@@ -12,7 +12,11 @@
 // -- GET /__guard/health -----------------------------------------------------
 
 export interface GuardHealth {
+  /** "healthy" or "degraded". Degraded still returns HTTP 200: the process is
+   *  alive and L1 is still enforcing, it just cannot deliver everything. */
   status: string
+  /** Plain-language reasons the gateway is degraded. Empty when healthy. */
+  degraded_reasons?: string[]
   /** "enforce" | "enforce-l1" | "monitor" - free-form, read from GUARD_MODE. */
   mode: string
   enforcing_rules: boolean
@@ -23,6 +27,46 @@ export interface GuardHealth {
   redis: boolean
   threshold: number
   uptime_s: number
+  /** Enforcement rollout state. Absent on a gateway built before Phase E. */
+  ml?: MlEnforcement
+}
+
+/** Detection and enforcement are separate decisions; this reports both. */
+export interface MlEnforcement {
+  /** Percentage of clients whose ML verdicts are enforced. 0 means none. */
+  rollout_percent: number
+  /** What counts as a detection, i.e. what the console shows. */
+  threshold_detect: number
+  /** How sure before a 403. Never below the detection threshold. */
+  threshold_enforce: number
+  /** Path templates ML may block. Empty means every endpoint is eligible. */
+  enforce_endpoints: string[]
+  /** Whether a degraded rate signal suppresses enforcement. */
+  require_rate_state: boolean
+  /** False means canary membership is publicly computable. */
+  salted: boolean
+  /** Whether ML verdicts can block anything at all right now. */
+  enforcing: boolean
+  brake: MlBrake
+}
+
+/**
+ * The automatic brake. It measures the would-block rate across everything that
+ * reached the models, so the figure is meaningful even at 0% rollout - which is
+ * how an operator sees whether enforcement would be safe before enabling it.
+ */
+export interface MlBrake {
+  enabled: boolean
+  engaged: boolean
+  tripped_at: number | null
+  tripped_rate: number
+  tripped_samples: number
+  tripped_clients: number
+  window_secs: number
+  live_would_block_rate: number
+  live_samples: number
+  live_clients: number
+  max_rate: number
 }
 
 // -- GET /__guard/stats ------------------------------------------------------
@@ -31,6 +75,13 @@ export interface GuardStats {
   total: number
   allowed: number
   blocked: number
+  /** ML verdicts recorded, whether or not they were acted on. */
+  ml_detected?: number
+  /** ML verdicts that actually returned 403. */
+  ml_enforced?: number
+  /** Counts per gate reason, e.g. how many were outside the canary. */
+  ml_gate?: Record<string, number>
+  ml?: MlEnforcement
   /** Counts ENFORCED blocks only, keyed by the layer that decided. */
   by_layer: Record<string, number>
   trained_at: string | null
@@ -86,6 +137,15 @@ export interface GuardEvent {
   degraded: boolean
   features: Record<string, number>
   label: string | null
+  /**
+   * Why an ML verdict was or was not enforced. Absent on events logged before
+   * Phase E, so every consumer must tolerate undefined.
+   */
+  enforce_gate?: string
+  /** The enforcement threshold in force for THIS request. */
+  enforce_threshold?: number
+  /** Canary membership, or null when the gate never needed to compute it. */
+  canary?: boolean | null
 }
 
 export interface EventsResponse {

@@ -36,6 +36,7 @@ import shutil
 import sys
 import time
 from collections import Counter, defaultdict
+from datetime import datetime
 
 import numpy as np
 
@@ -108,6 +109,12 @@ def main():
                     help="abort if more than this fraction trips a BLOCK rule")
     ap.add_argument("--since-minutes", type=int, default=None,
                     help="only use events from the last N minutes")
+    ap.add_argument("--rederive-bounds", action="store_true", default=True,
+                    help="recompute ae_lo/ae_hi and if_lo/if_hi from this "
+                         "deployment's own traffic (default: on)")
+    ap.add_argument("--keep-trained-bounds", dest="rederive_bounds",
+                    action="store_false",
+                    help="reuse the bounds from decision.json unchanged")
     ap.add_argument("--force", action="store_true", help="override safety gates")
     args = ap.parse_args()
 
@@ -192,10 +199,78 @@ def main():
 
     X = features.to_matrix([r["features"] for r in clean])
     Xs = scaler.transform(X)
-    i_n = np.clip((-iforest.decision_function(Xs) - decision["if_lo"]) /
-                  (decision["if_hi"] - decision["if_lo"] + 1e-9), 0, 1)
-    a_n = np.clip((ae.score(Xs) - decision["ae_lo"]) /
-                  (decision["ae_hi"] - decision["ae_lo"] + 1e-9), 0, 1)
+    if_raw = -iforest.decision_function(Xs)
+    ae_raw = ae.score(Xs)
+
+    # ── re-derive the normalisation bounds for THIS deployment ──────────────
+    #
+    # These used to be read straight out of decision.json and reused, so a new
+    # backend inherited the bounds of the corpus the model was trained on. That
+    # is exactly what failed: measured on real traffic, the shipped ae_hi sat
+    # at the 52nd percentile, meaning half of all legitimate requests saturated
+    # at 1.0 and received the identical score every attack gets. Recalibrating
+    # the threshold could not fix it, because the information had already been
+    # destroyed before the threshold was applied.
+    #
+    # The window is contamination-gated above and BLOCK-rule hits are removed,
+    # so `clean` is the best available estimate of this deployment's normal
+    # traffic. Percentiles, not min/max, so one freak request cannot stretch
+    # the scale.
+    old_if = (float(decision["if_lo"]), float(decision["if_hi"]))
+    old_ae = (float(decision["ae_lo"]), float(decision["ae_hi"]))
+    if args.rederive_bounds:
+        if_lo, if_hi = float(np.percentile(if_raw, 1)), float(np.percentile(if_raw, 99.5))
+        ae_lo, ae_hi = float(np.percentile(ae_raw, 1)), float(np.percentile(ae_raw, 99.5))
+        if if_hi - if_lo < 1e-9 or ae_hi - ae_lo < 1e-12:
+            print("  WARNING: degenerate score range in this window; keeping the "
+                  "trained bounds rather than dividing by ~zero")
+            if_lo, if_hi = old_if
+            ae_lo, ae_hi = old_ae
+    else:
+        if_lo, if_hi = old_if
+        ae_lo, ae_hi = old_ae
+
+    sat_before = float((ae_raw > old_ae[1]).mean())
+    sat_after = float((ae_raw > ae_hi).mean())
+    print(f"\n  autoencoder ceiling  : trained ae_hi={old_ae[1]:.6g} "
+          f"-> {sat_before:.1%} of this window saturates")
+    if args.rederive_bounds:
+        print(f"                         re-derived ae_hi={ae_hi:.6g} "
+              f"-> {sat_after:.1%} saturates")
+        if sat_before > 0.05:
+            print(f"  A saturated score carries no information: benign and hostile")
+            print(f"  requests both read 1.0. {sat_before:.1%} was being discarded.")
+
+    # Per-endpoint bounds, mirroring train.py. The gateway prefers these when
+    # an endpoint has enough samples, so calibration has to produce them or a
+    # recalibrated deployment silently falls back to global normalisation.
+    if args.rederive_bounds:
+        by_ep = defaultdict(list)
+        for k, r in enumerate(clean):
+            by_ep[r.get("template", "/")].append(k)
+        written = 0
+        for tpl, idx in by_ep.items():
+            if len(idx) < Baseline.MIN_SCORE_SAMPLES or tpl not in new_bl.endpoints:
+                continue
+            ii, aa = if_raw[idx], ae_raw[idx]
+            lo_i, hi_i = float(np.percentile(ii, 1)), float(np.percentile(ii, 99.5))
+            lo_a, hi_a = float(np.percentile(aa, 1)), float(np.percentile(aa, 99.5))
+            if hi_i - lo_i < 1e-9 or hi_a - lo_a < 1e-12:
+                continue
+            new_bl.endpoints[tpl]["scores"] = {
+                "if_lo": lo_i, "if_hi": hi_i, "ae_lo": lo_a, "ae_hi": hi_a,
+                "n": len(idx)}
+            written += 1
+        print(f"  per-endpoint bounds  : {written} of {len(new_bl.endpoints)} endpoints")
+
+    i_n = np.clip((if_raw - if_lo) / (if_hi - if_lo + 1e-9), 0, 1)
+    a_n = np.clip((ae_raw - ae_lo) / (ae_hi - ae_lo + 1e-9), 0, 1)
+    for k, r in enumerate(clean):
+        st = new_bl.score_stats(r.get("template", "/"))
+        if st is None:
+            continue
+        i_n[k] = np.clip((if_raw[k] - st["if_lo"]) / (st["if_hi"] - st["if_lo"] + 1e-9), 0, 1)
+        a_n[k] = np.clip((ae_raw[k] - st["ae_lo"]) / (st["ae_hi"] - st["ae_lo"] + 1e-9), 0, 1)
     rate = np.clip([np.expm1(r["features"].get("win_log_count", 0.0))
                     for r in clean], 0, None) / max(1, config.RATE_LIMIT)
     rate = np.clip(rate, 0, 1)
@@ -278,6 +353,20 @@ def main():
         json.dump(new_bl.to_dict(), fh, indent=2)
 
     decision["threshold"] = new_thr
+
+    if args.rederive_bounds:
+
+        # The threshold is meaningless without the bounds it was measured
+
+        # against - they must be written together or the next reload
+
+        # applies a new threshold to an old scale.
+
+        decision["if_lo"], decision["if_hi"] = if_lo, if_hi
+
+        decision["ae_lo"], decision["ae_hi"] = ae_lo, ae_hi
+
+        decision["bounds_recalibrated_at"] = datetime.now().isoformat(timespec="seconds")
     decision["calibrated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     decision["calibration_samples"] = len(clean)
     decision["calibration_target_fpr"] = args.target_fpr

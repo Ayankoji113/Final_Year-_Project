@@ -137,6 +137,12 @@ class Baseline:
     the model consumes deviations from the baseline, not raw magnitudes.
     """
 
+    # An endpoint needs at least this many calibration samples before its own
+    # score percentiles are trusted over the global ones. Mirrors the 5-sample
+    # floor calibrate.py already applies to body statistics, but higher: a
+    # percentile is a much noisier estimate than a mean.
+    MIN_SCORE_SAMPLES = 40
+
     def __init__(self, data: Optional[dict] = None):
         data = data or {}
         self.endpoints: Dict[str, dict] = data.get("endpoints", {})
@@ -151,6 +157,45 @@ class Baseline:
         if not e:
             return None
         return float(e.get("body_mean", 0.0)), float(e.get("body_std", 0.0))
+
+    def score_stats(self, template: str) -> Optional[dict]:
+        """Per-endpoint anomaly-score bounds, or None to use the global ones.
+
+        WHY THIS EXISTS
+        ---------------
+        Normal reconstruction error differs by three orders of magnitude
+        between endpoints - measured at 0.0001 on /api/orders against 0.59 on
+        /api/users/login. A single global ceiling applied to both means whole
+        endpoints saturate at 1.0 while others never move, and a saturated
+        score carries no information: benign and hostile requests receive the
+        identical value.
+
+        Normalising against the endpoint's OWN distribution is the same
+        baseline-relative construction `body_size_z` and `path_known` already
+        use. It is a deviation-from-normal measure, not endpoint identity, so
+        FEATURE_NAMES is untouched and the feature contract is unaffected.
+
+        Returns None when the endpoint is unknown or thinly sampled, so a new
+        backend behaves exactly as it does today rather than worse.
+        """
+        e = self.endpoints.get(template)
+        if not e:
+            return None
+        s = e.get("scores")
+        if not isinstance(s, dict):
+            return None
+        if int(s.get("n", 0)) < self.MIN_SCORE_SAMPLES:
+            return None
+        for k in ("if_lo", "if_hi", "ae_lo", "ae_hi"):
+            if k not in s:
+                return None
+        # A degenerate range would divide by ~0 and turn every request on this
+        # endpoint into a 1.0. Fall back rather than produce that.
+        if float(s["if_hi"]) - float(s["if_lo"]) < 1e-9:
+            return None
+        if float(s["ae_hi"]) - float(s["ae_lo"]) < 1e-12:
+            return None
+        return s
 
     def knows(self, template: str) -> bool:
         # With no baseline at all we must not label every endpoint "novel",

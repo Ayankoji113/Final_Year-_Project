@@ -336,3 +336,49 @@ export function backendStateFromEvents(events: GuardEvent[], sample = 60): Backe
     detail: `${failures.length} of the last ${forwarded.length} forwarded requests returned 502 or 504.`,
   }
 }
+
+/**
+ * Why an ML verdict was or was not enforced.
+ *
+ * The gateway records this per request, so the console never has to infer it.
+ * Each reason is separately actionable: "below threshold" means tighten or
+ * loosen the bar, "not in canary" means widen the rollout, and "brake" means
+ * the safety latch fired and an operator has to look before anything resumes.
+ */
+export const GATE_META: Record<string, { label: string; why: string }> = {
+  enforce: { label: 'Enforced', why: 'The verdict was acted on: this request received 403.' },
+  l1: { label: 'Layer 1', why: 'A deterministic layer decided. The ML gate was never consulted.' },
+  mode: {
+    label: 'Rollout off',
+    why: 'ML enforcement is at 0% of clients, so every ML verdict is recorded only.',
+  },
+  degraded: {
+    label: 'Degraded input',
+    why: 'Redis was unavailable, so the rate features read zero and the probability came from knowingly degraded input. Detect on it, do not block on it.',
+  },
+  brake: {
+    label: 'Brake engaged',
+    why: 'The automatic brake disabled ML enforcement after the would-block rate crossed its ceiling. Layer 1 is still enforcing.',
+  },
+  'below-threshold': {
+    label: 'Below enforce threshold',
+    why: 'Detected, but the probability did not reach the separate enforcement threshold.',
+  },
+  'endpoint-not-enabled': {
+    label: 'Endpoint not enabled',
+    why: 'This endpoint is not in the list ML is allowed to block on. False-positive rates differ per endpoint, so enforcement is enabled per endpoint.',
+  },
+  'not-in-canary': {
+    label: 'Outside canary',
+    why: 'This client falls outside the percentage of clients ML enforcement is rolled out to.',
+  },
+  error: {
+    label: 'Gate error',
+    why: 'The enforcement gate raised. It is wrapped to resolve to "do not enforce", so a fault here can never cause over-blocking.',
+  },
+}
+
+export function gateMeta(gate: string | undefined) {
+  if (!gate) return null
+  return GATE_META[gate] ?? { label: gate, why: 'Gate reason not known to this console.' }
+}

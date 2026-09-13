@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, Copy, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import type { GuardEvent, GuardRule } from '../../types'
-import { layerMeta, outcomeOf } from '../../utils/derive'
+import { gateMeta, layerMeta, outcomeOf } from '../../utils/derive'
 import { formatEventDateTime, formatInt, formatMs } from '../../utils/format'
 import { DecisionBadge, LayerBadge, MethodBadge, Pill, StatusBadge } from '../status/Badges'
 import { Panel, SourceNote, Unavailable } from '../common/Panel'
@@ -78,6 +78,31 @@ function VerdictHeader({ event }: { event: GuardEvent }) {
             {event.label && <Pill tone="info">ground-truth label: {event.label}</Pill>}
           </div>
           <p className="mt-2.5 text-[11px] text-slate-t">{meta.description}</p>
+          {(() => {
+            // Why an ML verdict was or was not acted on. The gateway records
+            // this per request, so nothing here is inferred.
+            const g = gateMeta(event.enforce_gate)
+            if (!g || event.enforce_gate === 'l1' || !event.enforce_gate) return null
+            return (
+              <div className="mt-2.5 rounded-md border border-ink-600 bg-ink-900/50 p-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] tracking-wide text-slate-t uppercase">
+                    Enforcement
+                  </span>
+                  <Pill tone={event.enforce_gate === 'enforce' ? 'bad' : 'warn'}>{g.label}</Pill>
+                  {event.enforce_threshold !== undefined && (
+                    <Pill tone="mute">enforce at {event.enforce_threshold.toFixed(4)}</Pill>
+                  )}
+                  {event.canary !== null && event.canary !== undefined && (
+                    <Pill tone={event.canary ? 'info' : 'mute'}>
+                      {event.canary ? 'in canary' : 'outside canary'}
+                    </Pill>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-b">{g.why}</p>
+              </div>
+            )
+          })()}
         </div>
       </div>
     </div>

@@ -1,0 +1,403 @@
+<title>The Fourteen Unseeable Attacks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+
+<style>
+/* ---------------------------------------------------------------
+   A proposal, not an incident report. Where ZORO 1.0 was cool and
+   instrument-blue, this is indigo: the register of a design
+   decision rather than an alarm. Archivo carries structure,
+   Source Serif carries the argument, JetBrains Mono carries every
+   measurement and every field name - and field names are the whole
+   subject, so they get a real face rather than a fallback.
+   --------------------------------------------------------------- */
+:root {
+  --paper:   #f4f4f7;
+  --surface: #ffffff;
+  --sunk:    #ebebf1;
+  --ink:     #16161d;
+  --ink-2:   #4b4b5a;
+  --ink-3:   #7a7a8c;
+  --rule:    #d9d9e3;
+  --rule-2:  #e8e8ef;
+  --accent:  #4a3fb5;
+  --accent-2:#6b5ee0;
+  --ok:      #1f7a4d;
+  --ok-bg:   #e4f2ea;
+  --no:      #b3261e;
+  --no-bg:   #fae8e7;
+  --warn:    #8a6100;
+  --warn-bg: #fbf1dc;
+  --shadow:  0 1px 2px rgba(22,22,29,.05), 0 12px 32px -20px rgba(22,22,29,.35);
+
+  --sans:  'Archivo', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --mono:  'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+:root:not([data-theme="light"]) {
+  @media (prefers-color-scheme: dark) {
+    --paper:   #111015;
+    --surface: #1a1922;
+    --sunk:    #21202b;
+    --ink:     #eceaf3;
+    --ink-2:   #b6b3c4;
+    --ink-3:   #83808f;
+    --rule:    #302e3d;
+    --rule-2:  #262533;
+    --accent:  #9b8cff;
+    --accent-2:#b3a7ff;
+    --ok:      #5fc98e;
+    --ok-bg:   #14291e;
+    --no:      #f4796f;
+    --no-bg:   #2c1614;
+    --warn:    #e0ad4a;
+    --warn-bg: #2b2213;
+    --shadow:  0 1px 2px rgba(0,0,0,.5), 0 14px 36px -22px rgba(0,0,0,.95);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:   #111015;
+  --surface: #1a1922;
+  --sunk:    #21202b;
+  --ink:     #eceaf3;
+  --ink-2:   #b6b3c4;
+  --ink-3:   #83808f;
+  --rule:    #302e3d;
+  --rule-2:  #262533;
+  --accent:  #9b8cff;
+  --accent-2:#b3a7ff;
+  --ok:      #5fc98e;
+  --ok-bg:   #14291e;
+  --no:      #f4796f;
+  --no-bg:   #2c1614;
+  --warn:    #e0ad4a;
+  --warn-bg: #2b2213;
+  --shadow:  0 1px 2px rgba(0,0,0,.5), 0 14px 36px -22px rgba(0,0,0,.95);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--serif); font-size: 17px; line-height: 1.6;
+  padding-inline: 20px; padding-block: 0;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1000px; margin: 0 auto; }
+.col  { max-width: 66ch; }
+
+header.mast { padding-block: 52px 24px; border-bottom: 1px solid var(--rule); margin-bottom: 32px; }
+.kicker {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 16px;
+}
+h1 {
+  font-family: var(--sans); font-weight: 700;
+  font-size: clamp(2.2rem, 5.5vw, 3.5rem); line-height: 1.03;
+  letter-spacing: -.03em; margin: 0 0 14px; text-wrap: balance;
+}
+.dek { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 58ch; }
+.meta {
+  display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 22px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+}
+.meta b { color: var(--ink-2); font-weight: 500; }
+
+.ask {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-top: 3px solid var(--accent); border-radius: 2px;
+  padding: 26px 28px; box-shadow: var(--shadow); margin-bottom: 42px;
+}
+.ask .h {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent); font-weight: 700;
+}
+.ask h2 {
+  font-family: var(--sans); font-weight: 700; letter-spacing: -.02em;
+  font-size: clamp(1.4rem, 3.2vw, 1.95rem); margin: 10px 0 12px; line-height: 1.15;
+}
+.ask p { margin: 0 0 10px; color: var(--ink-2); max-width: 64ch; }
+.ask p:last-child { margin-bottom: 0; }
+
+section { margin-bottom: 44px; }
+.sec-head { border-top: 1px solid var(--rule); padding-top: 16px; margin-bottom: 16px; }
+h2.sec {
+  font-family: var(--sans); font-weight: 600; letter-spacing: -.02em;
+  font-size: clamp(1.2rem, 2.6vw, 1.55rem); margin: 0; text-wrap: balance;
+}
+.sec-head .sub { font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3); margin-top: 6px; }
+h3 { font-family: var(--sans); font-size: 1rem; font-weight: 600; margin: 26px 0 8px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 16px; padding-left: 1.15rem; }
+li { margin-bottom: 8px; }
+code {
+  font-family: var(--mono); font-size: .84em; background: var(--sunk);
+  padding: .1em .35em; border-radius: 2px; color: var(--ink-2);
+}
+strong { font-weight: 600; }
+
+.tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 2px;
+      background: var(--surface); margin: 0 0 16px; }
+table { border-collapse: collapse; width: 100%; min-width: 520px;
+        font-family: var(--sans); font-size: 13.5px; }
+caption { caption-side: top; text-align: left; font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3); padding: 12px 14px 2px; }
+th, td { padding: 8px 14px; text-align: left; border-bottom: 1px solid var(--rule-2);
+         vertical-align: middle; }
+thead th { font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+  border-bottom: 1px solid var(--rule); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+td.n, th.n { text-align: right; font-family: var(--mono);
+             font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.f { font-family: var(--mono); font-size: 12.5px; }
+
+/* AUC cells: the fill IS the value, so the matrix reads before it is read */
+.auc { display: inline-block; min-width: 4.2em; text-align: right;
+       font-family: var(--mono); font-variant-numeric: tabular-nums;
+       padding: 2px 7px; border-radius: 2px; font-size: 12.5px; }
+.auc.hit  { background: var(--ok-bg);   color: var(--ok);   font-weight: 700; }
+.auc.part { background: var(--warn-bg); color: var(--warn); }
+.auc.miss { color: var(--ink-3); }
+
+.pill { font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px;
+  border-radius: 2px; white-space: nowrap; display: inline-block; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.no { background: var(--no-bg); color: var(--no); }
+.pill.w  { background: var(--warn-bg); color: var(--warn); }
+
+.note { border-left: 2px solid var(--accent); background: var(--surface);
+  padding: 16px 20px; margin: 0 0 20px; }
+.note .h { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--accent); font-weight: 700;
+  display: block; margin-bottom: 8px; }
+.note p:last-child { margin-bottom: 0; }
+.note.red { border-left-color: var(--no); }
+.note.red .h { color: var(--no); }
+
+pre { font-family: var(--mono); font-size: 12px; line-height: 1.55;
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 2px; padding: 14px 16px; overflow-x: auto; margin: 0 0 16px;
+  color: var(--ink-2); }
+pre b { color: var(--ink); font-weight: 700; }
+
+.rec { background: var(--surface); border: 2px solid var(--accent);
+  border-radius: 2px; padding: 30px; box-shadow: var(--shadow); margin-bottom: 36px; }
+.rec .h { font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+.rec h2 { font-family: var(--sans); font-weight: 700; letter-spacing: -.025em;
+  font-size: clamp(1.5rem, 3.6vw, 2.1rem); margin: 10px 0 14px; line-height: 1.1; }
+
+footer { border-top: 1px solid var(--rule); padding-block: 22px 56px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+
+@media (max-width: 560px) { body { font-size: 16px; } .rec { padding: 22px; } }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="kicker">MicroAPI Guard &middot; Feature-set decision &middot; 2026-09-12</div>
+  <h1>The Fourteen Unseeable Attacks</h1>
+  <p class="dek">Three attack families are invisible to the detector, and no amount of retraining
+  will change that. They carry no anomalous shape. The 34 features cannot express what makes them
+  hostile.</p>
+  <div class="meta">
+    <span>Decision <b>change FEATURE_NAMES, or accept the gap</b></span>
+    <span>Evidence <b>508 benign + 91 attacks, independent client</b></span>
+    <span>Status <b>awaiting approval</b></span>
+  </div>
+</header>
+
+<div class="ask">
+  <span class="h">What I am asking for</span>
+  <h2>Permission to add four features and retrain</h2>
+  <p>The plan we agreed says keep the 34-feature contract and fix the data instead. That was the
+  right call and it worked: false positives fell from 44.5% to 8.5%. But the measurement that
+  followed shows three attack families cannot be detected by any model built on these 34 features,
+  because the features do not encode the thing that makes those requests attacks.</p>
+  <p>I tested four candidate features against the same corpus before proposing them. Three of them
+  separate a family perfectly, and two cost nothing in false positives.</p>
+</div>
+
+<section>
+  <div class="sec-head">
+    <h2 class="sec">What the last round actually proved</h2>
+    <div class="sub">Same traffic, same scoring, three model generations</div>
+  </div>
+  <div class="tw">
+    <table>
+      <caption>Independent client &middot; 508 legitimate, 91 attacks surviving Layer 1</caption>
+      <thead><tr><th>Model</th><th class="n">False positives</th><th class="n">Recall</th><th class="n">F1</th><th class="n">ROC-AUC</th></tr></thead>
+      <tbody>
+        <tr><td>Shipped</td><td class="n">44.49%</td><td class="n">100%</td><td class="n">0.4461</td><td class="n">0.7320</td></tr>
+        <tr><td>B1 &middot; query + body shapes</td><td class="n">13.58%</td><td class="n">87.9%</td><td class="n"><strong>0.6667</strong></td><td class="n"><strong>0.8395</strong></td></tr>
+        <tr><td>B2 &middot; full feature coverage</td><td class="n"><strong>8.46%</strong></td><td class="n">29.7%</td><td class="n">0.3354</td><td class="n">0.8131</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Reading that as "B2 traded recall for precision" is the obvious interpretation and it is wrong.
+    The two numbers were never independent.</p>
+    <p>The shipped model scored 100% recall because it flagged <em>everything</em> on those endpoints.
+    That same blanket is what produced 44% false positives. Removing the blanket removed both. The
+    detections that vanished were never discriminative &mdash; they were a stopped clock being right
+    twice a day.</p>
+  </div>
+  <div class="note red">
+    <span class="h">The result that settles it</span>
+    <p>Under B2, a NoSQL injection against <code>/api/users/login</code> scores <strong>0.436</strong>.
+    A genuine login on the same endpoint scores <strong>0.936</strong>. The attack looks
+    <em>more normal than real traffic does</em>. No threshold placed anywhere separates them, because
+    they are the wrong way round.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <h2 class="sec">Per family, and why three of them are unreachable</h2>
+    <div class="sub">Recall by attack family across the three models</div>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Family</th><th class="n">n</th><th class="n">Shipped</th><th class="n">B1</th><th class="n">B2</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="f">idor</td><td class="n">16</td><td class="n">100%</td><td class="n">100%</td><td class="n"><span class="pill ok">100%</span></td><td>Genuinely odd path shape</td></tr>
+        <tr><td class="f">logic</td><td class="n">27</td><td class="n">100%</td><td class="n">100%</td><td class="n">33%</td><td>Partially visible via magnitude</td></tr>
+        <tr><td class="f">nosql</td><td class="n">15</td><td class="n">100%</td><td class="n">100%</td><td class="n"><span class="pill no">13%</span></td><td>Object where a string belongs &mdash; <strong>type is not a feature</strong></td></tr>
+        <tr><td class="f">massassign</td><td class="n">15</td><td class="n">100%</td><td class="n">100%</td><td class="n"><span class="pill no">0%</span></td><td>Extra field names &mdash; <strong>names are not a feature</strong></td></tr>
+        <tr><td class="f">enum</td><td class="n">11</td><td class="n">100%</td><td class="n"><span class="pill no">0%</span></td><td class="n"><span class="pill no">0%</span></td><td>Huge parameter value &mdash; <strong>values are not a feature</strong></td></tr>
+        <tr><td class="f">sqli</td><td class="n">4</td><td class="n">100%</td><td class="n">100%</td><td class="n">0%</td><td>Layer 1 catches the other 8</td></tr>
+        <tr><td class="f">cmdi</td><td class="n">3</td><td class="n">100%</td><td class="n">100%</td><td class="n">0%</td><td>Layer 1 catches the other 3</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>The feature set measures <em>shape</em>: how long, how deep, how much entropy, how many
+    parameters. That was a deliberate and correct decision &mdash; it is what makes the detector work
+    in front of any backend without learning one API&rsquo;s vocabulary.</p>
+    <p>But a mass-assignment attack is the same length as a real registration. An enumeration probe has
+    the same parameter count as real pagination. A NoSQL payload has the same field names as a real
+    login. Shape is simply not where the signal is.</p>
+  </div>
+  <pre><b>massassign</b>  {"username":"x","password":"y","name":"z","email":"a@b.test",
+              <b>"is_staff":true,"role":"owner","credit":999999</b>}
+<b>real</b>        {"username":"amara1042","password":"qzlfjrbd","name":"Amara Cheng",
+              "email":"amara.cheng@corp.example"}
+
+same endpoint &middot; same field types &middot; similar length &middot; <b>three field names apart</b></pre>
+</section>
+
+<section>
+  <div class="sec-head">
+    <h2 class="sec">The candidates, tested before proposing</h2>
+    <div class="sub">AUC against all 508 benign requests &middot; 1.000 = perfect separation</div>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr>
+        <th>Family</th><th class="n">n</th>
+        <th class="n">unknown&nbsp;field&nbsp;ratio</th>
+        <th class="n">nonscalar&nbsp;ratio</th>
+        <th class="n">numeric&nbsp;magnitude</th>
+        <th class="n">field&nbsp;count</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="f">massassign</td><td class="n">15</td>
+          <td class="n"><span class="auc hit">1.000</span></td><td class="n"><span class="auc miss">0.500</span></td>
+          <td class="n"><span class="auc part">0.893</span></td><td class="n"><span class="auc hit">0.999</span></td></tr>
+        <tr><td class="f">nosql</td><td class="n">15</td>
+          <td class="n"><span class="auc miss">0.500</span></td><td class="n"><span class="auc hit">1.000</span></td>
+          <td class="n"><span class="auc miss">0.497</span></td><td class="n"><span class="auc part">0.921</span></td></tr>
+        <tr><td class="f">enum</td><td class="n">11</td>
+          <td class="n"><span class="auc miss">0.500</span></td><td class="n"><span class="auc miss">0.500</span></td>
+          <td class="n"><span class="auc hit">1.000</span></td><td class="n"><span class="auc miss">0.434</span></td></tr>
+        <tr><td class="f">logic</td><td class="n">27</td>
+          <td class="n"><span class="auc miss">0.500</span></td><td class="n"><span class="auc miss">0.500</span></td>
+          <td class="n"><span class="auc part">0.893</span></td><td class="n"><span class="auc part">0.921</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Each of the three blind families is separated <strong>perfectly by a single feature</strong>, and
+    it is a different feature each time. That is what you would expect if the gap is expressive rather
+    than statistical: nothing is missing from the model, something is missing from its vocabulary.</p>
+    <h3>What they cost in false positives</h3>
+  </div>
+  <div class="tw">
+    <table>
+      <caption>99th percentile across the 508 legitimate requests</caption>
+      <thead><tr><th>Candidate feature</th><th class="n">99th pct, benign</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td class="f">body_unknown_field_ratio</td><td class="n">0.0000</td><td><span class="pill ok">none</span></td></tr>
+        <tr><td class="f">body_nonscalar_ratio</td><td class="n">0.0000</td><td><span class="pill ok">none</span></td></tr>
+        <tr><td class="f">has_negative_number</td><td class="n">0.0000</td><td><span class="pill ok">none</span></td></tr>
+        <tr><td class="f">max_numeric_magnitude</td><td class="n">6.2166</td><td><span class="pill w">needs a threshold</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Three of the four are <em>exactly zero</em> across every legitimate request measured. Real
+    clients do not send unknown field names, do not nest objects where scalars belong, and do not send
+    negative quantities. The fourth needs care: <code>log1p</code> of about 500 is ordinary pagination,
+    so it is a graded feature rather than a flag.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <h2 class="sec">What it costs, and the one real risk</h2>
+    <div class="sub">Nothing here is free</div>
+  </div>
+  <div class="col">
+    <p><strong>The feature contract breaks.</strong> <code>detector.load()</code> refuses any model whose
+    <code>feature_names</code> differ from the running build, so the gateway will not start until it is
+    retrained and the artefacts are replaced. That guard is doing its job; it just means this is a
+    coordinated change, not a hot reload.</p>
+    <p><strong>Everything downstream retrains.</strong> The corpus must be regenerated so the new
+    features are exercised, then <code>train.py</code>, <code>tune.py</code> on seeds 11&ndash;15 and
+    <code>validate.py</code> on seeds 1&ndash;10, and <code>compare.py</code> must mirror the change.</p>
+  </div>
+  <div class="note">
+    <span class="h">The risk worth arguing about</span>
+    <p><code>body_unknown_field_ratio</code> needs to know which fields an endpoint legitimately accepts,
+    and that is one step from learning the backend&rsquo;s vocabulary &mdash; the exact failure
+    <code>features.py</code> was rewritten to eliminate.</p>
+    <p>It survives on a distinction the codebase already relies on: the feature is <em>how much of this
+    body is unfamiliar for this endpoint</em>, learned from the calibration baseline, not <em>which
+    endpoint this is</em>. That is the same construction as <code>body_size_z</code> and
+    <code>path_known</code>. The check is that the two backend-agnosticism tests in
+    <code>test_features.py</code> still pass afterwards &mdash; if they fail, the feature is wrong and
+    should be dropped rather than argued for.</p>
+  </div>
+</section>
+
+<div class="rec">
+  <span class="h">Recommendation</span>
+  <h2>Adopt B1 now. Approve the four features as a separate, measured change.</h2>
+  <p>B1 is the best model this project has produced: F1 0.6667 against the shipped 0.4461, ROC-AUC
+  0.8395 against 0.7320, false positives down from 44.5% to 13.6%, and six of seven attack families
+  still at 100%. It beats what is deployed on every axis that matters. Ship it into
+  <code>enforce-l1</code> where it changes nothing about blocking but improves everything the
+  dashboard reports.</p>
+  <p>Then take the feature change deliberately, with the same measurement discipline: regenerate,
+  retrain, re-measure against the independent client, and keep it only if the blind families move and
+  the backend-agnosticism tests hold.</p>
+  <p style="margin-bottom:0">The alternative is to accept permanently that mass assignment, NoSQL
+  injection and enumeration are undetectable by this system. That is a defensible engineering position.
+  It is not a defensible <em>silent</em> position, which is why this is a decision rather than a commit.</p>
+</div>
+
+<footer>
+  Evidence: 622 requests from an independent client sharing no code with the training generator;
+  three model generations scored on identical traffic; candidate features computed from retained raw
+  bodies, which the event log deliberately does not store. Companion to
+  <code>docs/ZORO_1.0.md</code> and <code>docs/BASELINE.md</code>. No model artefact was replaced in
+  producing this.
+</footer>
+
+</div>

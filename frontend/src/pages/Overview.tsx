@@ -125,6 +125,18 @@ export function Overview() {
             detail="forwarded to the backend"
           />
           <MetricCard
+            label="ML detected / enforced"
+            value={`${formatInt(s?.ml_detected ?? 0)} / ${formatInt(s?.ml_enforced ?? 0)}`}
+            icon={BrainCircuit}
+            tone={(s?.ml_enforced ?? 0) > 0 ? 'ml' : 'warn'}
+            source="stats.ml_detected / stats.ml_enforced"
+            detail={
+              (s?.ml_enforced ?? 0) === 0 && (s?.ml_detected ?? 0) > 0
+                ? 'recorded only; no ML verdict returned 403'
+                : 'ML verdicts recorded and acted on'
+            }
+          />
+          <MetricCard
             label="Blocked (enforced)"
             value={formatInt(s?.blocked)}
             icon={ShieldBan}

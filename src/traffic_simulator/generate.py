@@ -78,10 +78,37 @@ def rword(n=8):
     return "".join(random.choices(string.ascii_lowercase, k=n))
 
 
+# Text that exercises the character-shape features. The previous rtext() joined
+# lowercase ASCII words, which left body_upper_ratio and body_nonascii_ratio at
+# EXACTLY zero variance across the whole corpus. The trainer's own zero-variance
+# guard flags that, and the consequence is precise: a single capital letter in a
+# request body becomes an infinitely-many-sigma event, so any client that
+# capitalises a name is scored as an attack.
+ACCENTED = ["café", "naïve", "piñata", "smörgås", "München", "São Paulo",
+            "Zürich", "日本語", "Ürün", "crème"]
+
+
 def rtext(mean_words=40):
-    """Lognormal-ish text length: most comments short, a few genuinely long."""
+    """Lognormal-ish text length: most comments short, a few genuinely long.
+
+    Deliberately mixes case and occasionally non-ASCII, because real bodies do
+    and the feature set measures both.
+    """
     n = max(1, int(random.lognormvariate(1.0, 1.1) * mean_words / 3))
-    return " ".join(random.choice(TERMS + FIRST + LAST) for _ in range(min(n, 900)))
+    words = []
+    for _ in range(min(n, 900)):
+        w = random.choice(TERMS + FIRST + LAST)
+        r = random.random()
+        if r < 0.12:
+            w = w.capitalize()
+        elif r < 0.15:
+            w = w.upper()
+        elif r < 0.19:
+            w = random.choice(ACCENTED)
+        words.append(w)
+    txt = " ".join(words)
+    # Sentence case, the way anything written by a human arrives.
+    return txt[:1].upper() + txt[1:] if txt else txt
 
 
 def person():
@@ -91,49 +118,143 @@ def person():
 
 # ── normal traffic ────────────────────────────────────────────────────────────
 
+def _query(pairs, omit_prob=0.35, bare_prob=0.15):
+    """Build a query string, dropping each OPTIONAL parameter sometimes.
+
+    This exists because of a measured false-positive cause. The generator used
+    to emit `/api/products?page=N&limit=M` on every single session, so the
+    corpus contained no example of that endpoint being called WITHOUT a query
+    string. The model learned "zero query parameters on /api/products" as an
+    anomaly, and a bare `GET /api/products` - the most ordinary request an API
+    has - scored 0.9948 against a 0.25 threshold while the paginated form
+    scored 0.0003.
+
+    Real clients omit optional parameters. If the corpus never does, the model
+    treats the omission as an attack.
+
+    `bare_prob` is a DELIBERATE no-query branch rather than a consequence of the
+    per-parameter coin flips. With four optional parameters at 35%, all of them
+    vanish only 1.5% of the time - measured at 12 bare requests out of 3,260,
+    which left the bare shape effectively unseen. The probability of the most
+    ordinary call an endpoint receives must not be the product of independent
+    omissions.
+    """
+    if random.random() < bare_prob:
+        return ""
+    kept = [(k, v) for k, v in pairs if random.random() > omit_prob]
+    random.shuffle(kept)          # order is another axis the corpus was narrow on
+    return ("?" + urllib.parse.urlencode(kept)) if kept else ""
+
+
+def _body(required, optional, omit_prob=0.4):
+    """Assemble a JSON body, dropping each OPTIONAL field sometimes.
+
+    The mirror of `_query` for POST and PUT. Every body the generator produced
+    carried every field it ever carries: `/api/comments` always sent
+    text+product_id+rating, `/api/orders` always product_id+quantity. That makes
+    `body_size_z`, `has_body` and `ct_json` a fingerprint of the endpoint rather
+    than a description of the request, which is the same failure as the query
+    string in a different feature.
+
+    Required fields are always present, so the backend's Pydantic models still
+    validate and a 422 stays a real bug rather than a silently dropped row.
+    """
+    body = dict(required)
+    for k, v in optional.items():
+        if random.random() > omit_prob:
+            body[k] = v
+    return body
+
+
 def normal_requests():
     """One legitimate session: a plausible sequence, not an isolated request."""
     seq = []
-    page = random.randint(1, 12)
-    seq.append(("GET", f"/api/products?page={page}&limit={random.choice([10,20,25,50])}", None))
+    seq.append(("GET", "/api/products" + _query([
+        ("page", random.randint(1, 12)),
+        ("limit", random.choice([10, 20, 25, 50])),
+        ("category", random.choice(CATEGORIES)),
+        ("sort", random.choice(["price", "-price", "name", "newest"])),
+    ]), None))
     for _ in range(random.randint(1, 5)):
-        seq.append(("GET", f"/api/products/{rid(1, 500)}", None))
+        seq.append(("GET", f"/api/products/{rid(1, 500)}" + _query(
+            [("expand", random.choice(["reviews", "stock", "reviews,stock"])),
+             ("currency", random.choice(["INR", "USD"]))], bare_prob=0.55), None))
     if random.random() < 0.6:
-        q = urllib.parse.quote(random.choice(TERMS))
-        extra = f"&category={urllib.parse.quote(random.choice(CATEGORIES))}" if random.random() < 0.4 else ""
-        seq.append(("GET", f"/api/search?q={q}&page={random.randint(1,5)}{extra}", None))
+        # `q` is the only parameter search genuinely requires; everything else
+        # is optional and must therefore sometimes be absent.
+        seq.append(("GET", "/api/search?q=" + urllib.parse.quote(random.choice(TERMS))
+                    + _query([("page", random.randint(1, 5)),
+                              ("limit", random.choice([10, 20, 50])),
+                              ("category", random.choice(CATEGORIES))]).replace("?", "&"), None))
     if random.random() < 0.45:
+        # Real credentials vary in length. Three hardcoded pairs gave this
+        # endpoint a body-size standard deviation of half a byte, so any real
+        # login sat ten sigma from the calibrated mean.
         f, l, email = person()
         seq.append(("POST", "/api/users/login",
-                    {"username": random.choice(["admin", "john", "jane"]),
-                     "password": random.choice(["pass123", "john456", "jane789"])}))
+                    {"username": random.choice(
+                        [f, f"{f}.{l}", f"{f}{random.randint(1, 9999)}", email,
+                         "admin", "john", "jane"]),
+                     "password": rword(random.randint(6, 28))}))
     if random.random() < 0.3:
         f, l, email = person()
-        seq.append(("POST", "/api/users/register",
-                    {"username": f"{f}_{rword(random.randint(3, 9))}",
-                     "password": rword(random.randint(8, 24)),
-                     "name": f"{f.capitalize()} {l.capitalize()}", "email": email}))
+        seq.append(("POST", "/api/users/register", _body(
+            {"username": f"{f}_{rword(random.randint(3, 9))}",
+             "password": rword(random.randint(8, 24)),
+             "name": f"{f.capitalize()} {l.capitalize()}", "email": email},
+            {"phone": f"+{random.randint(1, 99)}{random.randint(10**8, 10**9)}",
+             "newsletter": random.choice([True, False])})))
     if random.random() < 0.35:
-        seq.append(("GET", f"/api/users/{rid(1, 3)}", None))
+        seq.append(("GET", f"/api/users/{rid(1, 3)}" + _query([
+            ("include", random.choice(["orders", "profile", "orders,profile"])),
+            ("fields", random.choice(["id,name", "all"])),
+        ]), None))
+    # B2: rating and product_id are optional on this endpoint (the backend
+    # defaults them), so the corpus must contain bodies without them.
     if random.random() < 0.4:
-        seq.append(("POST", "/api/comments",
-                    {"text": rtext(), "product_id": rid(1, 500),
-                     "rating": random.randint(1, 5)}))
+        seq.append(("POST", "/api/comments", _body(
+            {"text": rtext()},
+            {"product_id": rid(1, 500), "rating": random.randint(1, 5)})))
     if random.random() < 0.3:
-        seq.append(("GET", f"/api/comments?page={random.randint(1,20)}&limit={random.choice([10,20,50])}", None))
+        seq.append(("GET", "/api/comments" + _query([
+            ("page", random.randint(1, 20)),
+            ("limit", random.choice([10, 20, 50])),
+            ("product_id", rid(1, 500)),
+        ]), None))
     if random.random() < 0.3:
-        seq.append(("POST", "/api/orders",
-                    {"product_id": rid(1, 5), "quantity": random.randint(1, 6)}))
+        seq.append(("POST", "/api/orders", _body(
+            # Quantity spanned 1-6, so body_digit_ratio sat four sigma below any
+            # client that orders in bulk. Real order sizes are heavy-tailed - but
+            # the first correction overshot: a third of orders were bulk and most
+            # carried an eight-digit reference, which normalised the digit-heavy
+            # shape the enum and logic attacks depend on and dropped their recall
+            # from 100% to 33%. Widening the corpus must not swallow the attack.
+            {"product_id": rid(1, 500),
+             "quantity": random.choices(
+                 [random.randint(1, 6), random.randint(5, 40), random.randint(40, 300)],
+                 weights=[70, 24, 6])[0]},
+            {"note": rtext(4), "gift": random.choice([True, False])},
+            omit_prob=0.6)))
     if random.random() < 0.15:
-        seq.append(("PUT", f"/api/users/{rid(1,3)}",
-                    {"name": f"{random.choice(FIRST).capitalize()} Updated",
-                     "email": person()[2]}))
+        seq.append(("PUT", f"/api/users/{rid(1,3)}", _body(
+            {"name": f"{random.choice(FIRST).capitalize()} Updated"},
+            {"email": person()[2], "phone": str(random.randint(10**9, 10**10))})))
     if random.random() < 0.1:
         seq.append(("DELETE", f"/api/orders/{rword(8)}", None))
+    # Previously always literally "/api/orders" with zero query variation, and
+    # always literally "/health". An endpoint the corpus only ever shows in one
+    # shape is an endpoint the model rejects in every other shape.
     if random.random() < 0.2:
-        seq.append(("GET", "/api/orders", None))
+        seq.append(("GET", "/api/orders" + _query([
+            ("status", random.choice(["confirmed", "pending", "cancelled"])),
+            ("limit", random.choice([10, 25, 100])),
+            ("since", f"2026-0{random.randint(1,9)}-{random.randint(10,28)}"),
+        ], bare_prob=0.45), None))
     if random.random() < 0.12:
-        seq.append(("GET", "/health", None))
+        seq.append(("GET", "/health" + _query(
+            [("verbose", random.choice(["1", "true"])),
+             ("probe", random.choice(["readiness", "liveness"]))],
+            bare_prob=0.6), None))
     # Dotted filenames, versioned prefixes and deeper nesting. Without these,
     # path_dot_count and path_depth are effectively constant in training, and
     # any real request containing a '.' (a static asset, a versioned API, a
@@ -143,15 +264,54 @@ def normal_requests():
         ext = random.choice(["pdf", "csv", "json", "png", "xlsx"])
         seq.append(("GET", f"/api/files/report.{random.randint(2019,2025)}.{ext}", None))
     if random.random() < 0.2:
-        seq.append(("GET", f"/api/v{random.randint(1,3)}/products/{rid(1,500)}", None))
+        seq.append(("GET", f"/api/v{random.randint(1,3)}/products/{rid(1,500)}"
+                    + _query([("expand", "reviews"), ("currency",
+                              random.choice(["INR", "USD", "EUR"]))]), None))
     if random.random() < 0.15:
         seq.append(("GET", f"/static/assets/{rword(6)}.min.js", None))
     if random.random() < 0.15:
         seq.append(("GET", f"/api/users/{rid(1,3)}/orders/{rid(1,900)}/items", None))
+    # ── features the corpus previously never exercised ───────────────────────
+    # Each of these was flagged CONSTANT by train.py's zero-variance guard, which
+    # means production traffic carrying any of them reads as a multi-sigma
+    # outlier. Constant-in-training is the single most reliable source of false
+    # positives in this design, so the generator has to produce them.
+    if random.random() < 0.2:
+        # Paths, not just query strings. path_nonascii_ratio, path_special_ratio
+        # and path_decode_delta are computed on the PATH alone, so accented
+        # search terms in ?q= left all three constant at zero.
+        seq.append(("GET", "/api/files/" + urllib.parse.quote(
+            random.choice(["rapport final.pdf", "année-2026.csv", "über_report.xlsx",
+                           "sales (q1).json", "notes#1.txt", "café-menu.pdf"])), None))
+    if random.random() < 0.18:
+        # non-ASCII and percent-encoding in the query -> q_decode_delta stops
+        # being constant
+        seq.append(("GET", "/api/search?q=" + urllib.parse.quote(random.choice(ACCENTED))
+                    + _query([("category", random.choice(CATEGORIES))],
+                             bare_prob=0.5).replace("?", "&"), None))
     if random.random() < 0.12:
-        seq.append(("GET", f"/api/search?q={urllib.parse.quote(random.choice(TERMS))}"
-                           f"&sort={random.choice(['price','name','-created_at'])}"
-                           f"&filter[status]=active", None))
+        # CORS preflight and cache revalidation: m_other stops being constant
+        seq.append((random.choice(["OPTIONS", "HEAD"]),
+                    random.choice(["/api/products", "/api/orders", "/api/comments"]), None))
+    if random.random() < 0.08:
+        # Partial update: m_patch stops being constant
+        seq.append(("PATCH", f"/api/users/{rid(1,3)}",
+                    _body({"name": random.choice(FIRST).capitalize()},
+                          {"email": person()[2]})))
+    if random.random() < 0.07:
+        # Legitimate traffic that trips a FLAG-severity signature without being
+        # an attack: a template-looking search term, a price range with a quote.
+        # n_flags was constant 0 across the corpus, so ANY flag hit on real
+        # traffic was unseen input. FLAG rules do not block, so these stay
+        # correctly labelled normal.
+        seq.append(("GET", "/api/search?q=" + urllib.parse.quote(random.choice(
+            ["{{price}}", "${total}", "o'brien", "50% off", "<b>sale</b>"])), None))
+    if random.random() < 0.12:
+        seq.append(("GET", "/api/search?q=" + urllib.parse.quote(random.choice(TERMS))
+                    + _query([("sort", random.choice(["price", "name", "-created_at"])),
+                              ("filter[status]", "active"),
+                              ("in_stock", random.choice(["1", "0"]))],
+                             bare_prob=0.0).replace("?", "&"), None))
     random.shuffle(seq)
     return seq
 
@@ -309,7 +469,7 @@ def send(method, path, body, label, ip, ua, extra_headers=None):
     headers = {"X-Ground-Truth": label, "X-Forwarded-For": ip, "User-Agent": ua}
     data = None
     if body is not None:
-        data = json.dumps(body).encode()
+        data = json.dumps(body, ensure_ascii=random.random() < 0.5).encode()
         headers["Content-Type"] = "application/json"
     # Vary header count -- it is a feature, and a constant would be a giveaway.
     # A quarter of sessions are "bare" clients (curl, a health prober, a minimal
@@ -373,15 +533,27 @@ def _profile_human():
     return normal_requests(), (0.05, 0.4)
 
 
+# Every profile below routes through _query/_body. They used to emit literal
+# query strings - "/api/products?page=1&limit=20", limit hardcoded to 50, one
+# fixed poller shape repeated 34 times - and between them they carry 42% of all
+# generated sessions. That is a large share of the corpus bypassing every
+# variation mechanism, which is why widening only normal_requests() moved the
+# false-positive rate by less than expected.
+
 def _profile_spa_dashboard():
     """A single-page app loading a dashboard: a fan-out of many small GETs."""
-    seq = [("GET", "/api/products?page=1&limit=20", None),
-           ("GET", "/api/orders", None),
-           ("GET", "/api/comments?page=1&limit=10", None)]
+    seq = [("GET", "/api/products" + _query([("page", random.randint(1, 3)),
+                                             ("limit", random.choice([10, 20, 24]))]), None),
+           ("GET", "/api/orders" + _query([("limit", random.choice([10, 20]))],
+                                          bare_prob=0.5), None),
+           ("GET", "/api/comments" + _query([("page", 1),
+                                             ("limit", random.choice([10, 20]))]), None)]
     for _ in range(random.randint(6, 22)):
-        seq.append(("GET", f"/api/products/{rid(1, 500)}", None))
+        seq.append(("GET", f"/api/products/{rid(1, 500)}"
+                    + _query([("expand", "stock")], bare_prob=0.7), None))
     for _ in range(random.randint(0, 4)):
-        seq.append(("GET", f"/api/users/{rid(1, 3)}", None))
+        seq.append(("GET", f"/api/users/{rid(1, 3)}"
+                    + _query([("include", "profile")], bare_prob=0.7), None))
     random.shuffle(seq)
     return seq, (0.0, 0.05)
 
@@ -394,16 +566,33 @@ def _profile_integration():
         if r < 0.5:
             seq.append(("GET", f"/api/orders/{rword(8)}", None))
         elif r < 0.75:
-            seq.append(("POST", "/api/orders",
-                        {"product_id": rid(1, 5), "quantity": random.randint(1, 4)}))
+            seq.append(("POST", "/api/orders", _body(
+                {"product_id": rid(1, 5), "quantity": random.randint(1, 4)},
+                {"note": rtext(3), "ref": rword(10)})))
         else:
-            seq.append(("GET", f"/api/products?page={random.randint(1,40)}&limit=50", None))
+            seq.append(("GET", "/api/products" + _query([
+                ("page", random.randint(1, 40)),
+                ("limit", random.choice([50, 100, 200, 500])),
+                ("updated_since", f"2026-0{random.randint(1,9)}-01"),
+            ], bare_prob=0.1), None))
     return seq, (0.0, 0.04)
 
 
 def _profile_poller():
-    """Uptime monitor / k8s probe: rapid, repetitive, tiny."""
-    ep = random.choice(["/health", "/api/products?limit=1"])
+    """Uptime monitor / k8s probe: rapid, repetitive, tiny.
+
+    A poller genuinely does repeat one shape, so the variation here is ACROSS
+    sessions rather than within one: each session picks its own shape. Without
+    that, `/health` appears in the corpus in exactly one form and every other
+    form of it reads as an attack.
+    """
+    ep = random.choice([
+        "/health",
+        "/health" + _query([("probe", random.choice(["liveness", "readiness"]))], bare_prob=0.0),
+        "/api/products" + _query([("limit", random.choice([1, 2, 5]))], bare_prob=0.0),
+        "/api/products",
+        "/api/orders" + _query([("limit", 1)], bare_prob=0.0),
+    ])
     return [("GET", ep, None) for _ in range(random.randint(20, 34))], (0.0, 0.06)
 
 

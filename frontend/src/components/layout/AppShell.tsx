@@ -46,10 +46,13 @@ function ProtectionStatus() {
   }
 
   const h = health.data
+  const reasons = h.degraded_reasons ?? []
   // "Protected" is claimed only when the gateway says it is enforcing. Under
   // monitor mode nothing is blocked, and saying otherwise on a security console
-  // is the most damaging thing this page could do.
-  const tone = !h.enforcing_rules ? 'warn' : h.enforcing_ml ? 'ok' : 'info'
+  // is the most damaging thing this page could do. A degraded gateway is called
+  // degraded here for the same reason: a control that has stopped working must
+  // never be reported as working.
+  const tone = reasons.length > 0 ? 'warn' : !h.enforcing_rules ? 'warn' : h.enforcing_ml ? 'ok' : 'info'
   const label = !h.enforcing_rules
     ? 'Observing only'
     : h.enforcing_ml
@@ -62,6 +65,11 @@ function ProtectionStatus() {
         <StatusDot tone={tone} pulse /> {label}
       </Pill>
       <ModeBadge mode={h.mode} enforcingMl={h.enforcing_ml} />
+      {reasons.length > 0 && (
+        <Pill tone="warn" title={reasons.join(' · ')}>
+          Degraded: {reasons.length} control{reasons.length > 1 ? 's' : ''} not working
+        </Pill>
+      )}
       {health.state === 'error' && (
         <Pill tone="warn" title={health.error ?? undefined}>
           stale
