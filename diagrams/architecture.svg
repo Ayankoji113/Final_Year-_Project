@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs>
+<marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2430"/></marker>
+<marker id="a-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/></marker>
+<marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d5fa8"/></marker>
+<marker id="a-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker>
+<marker id="a-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7a4fb0"/></marker>
+</defs>
+<style>.t{font-size:16px;font-weight:600;fill:#1f2430;text-anchor:middle}.s{font-size:12.5px;fill:#5b6170;text-anchor:middle}.l{font-size:12px;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}.h{font-size:24px;font-weight:700;fill:#1f2430}.hs{font-size:13.5px;fill:#5b6170}.g{font-size:13px;font-weight:700;fill:#5b6170;letter-spacing:.04em}</style>
+<rect width="1600" height="1020" fill="#ffffff"/>
+<text x="24" y="36" class="h">MicroAPI Guard — System Architecture</text>
+<text x="24" y="58" class="hs">Every arrow is a real data flow in the code. Layer 1 blocks; Layers 2–4 score; the enforcement gate decides what a verdict does.</text>
+<rect x="190" y="150" width="1150" height="640" rx="14" fill="#fafbfc" stroke="#9aa1ad" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="545" y="174" class="g">MICROAPI GUARD GATEWAY · FastAPI · port 5000 (the only published port)</text>
+<rect x="985" y="330" width="345" height="250" rx="10" fill="none" stroke="#1d5fa8" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="1157" y="599" class="g" text-anchor="middle" fill="#1d5fa8" style="fill:#1d5fa8">DETECTOR · LAYERS 2–4</text>
+<rect x="20" y="210" width="140" height="360" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="90.0" y="335.5" class="t">Client</text>
+<text x="90.0" y="352.5" class="s">users, apps,</text>
+<text x="90.0" y="369.5" class="s">attackers</text>
+<text x="90.0" y="386.5" class="s"></text>
+<text x="90.0" y="403.5" class="s">lab: traffic</text>
+<text x="90.0" y="420.5" class="s">generator,</text>
+<text x="90.0" y="437.5" class="s">validation</text>
+<text x="90.0" y="454.5" class="s">client</text>
+<path d="M385,79 a70.0,9 0 0,0 140,0 v44 a70.0,9 0 0,1 -140,0 z" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<ellipse cx="455.0" cy="79" rx="70.0" ry="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<text x="455.0" y="102.0" class="t">Redis</text>
+<text x="455.0" y="119.0" class="s">internal, no host port</text>
+<rect x="215" y="205" width="140" height="90" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="285.0" y="229.5" class="t">Ingress</text>
+<text x="285.0" y="246.5" class="s">body cap 1 MiB</text>
+<text x="285.0" y="263.5" class="s">client ID, path</text>
+<text x="285.0" y="280.5" class="s">template</text>
+<rect x="385" y="205" width="140" height="90" rx="8" fill="#fff4e5" stroke="#c77700" stroke-width="1.8"/>
+<text x="455.0" y="229.5" class="t">Rate counters</text>
+<text x="455.0" y="246.5" class="s">60 s window, 5 s</text>
+<text x="455.0" y="263.5" class="s">burst, distinct</text>
+<text x="455.0" y="280.5" class="s">endpoints</text>
+<rect x="555" y="205" width="140" height="90" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="625.0" y="238.0" class="t">Normalise</text>
+<text x="625.0" y="255.0" class="s">decode ×4, HTML,</text>
+<text x="625.0" y="272.0" class="s">NFKC, lowercase</text>
+<rect x="725" y="205" width="140" height="90" rx="8" fill="#fff4e5" stroke="#c77700" stroke-width="1.8"/>
+<text x="795.0" y="238.0" class="t">L1 Signatures</text>
+<text x="795.0" y="255.0" class="s">26 rules</text>
+<text x="795.0" y="272.0" class="s">22 block · 4 flag</text>
+<rect x="895" y="205" width="140" height="90" rx="8" fill="#fff4e5" stroke="#c77700" stroke-width="1.8"/>
+<text x="965.0" y="238.0" class="t">L1 Rate check</text>
+<text x="965.0" y="255.0" class="s">&gt; 40 / 5 s or</text>
+<text x="965.0" y="272.0" class="s">&gt; 240 / 60 s</text>
+<rect x="1110" y="205" width="200" height="90" rx="8" fill="#e9f1fb" stroke="#1d5fa8" stroke-width="1.8"/>
+<text x="1210.0" y="238.0" class="t">Feature extraction</text>
+<text x="1210.0" y="255.0" class="s">34 shape features,</text>
+<text x="1210.0" y="272.0" class="s">standardised</text>
+<rect x="1100" y="365" width="100" height="70" rx="8" fill="#e9f1fb" stroke="#1d5fa8" stroke-width="1.8"/>
+<text x="1150.0" y="388.0" class="t">L2</text>
+<text x="1150.0" y="405.0" class="s">Isolation</text>
+<text x="1150.0" y="422.0" class="s">Forest</text>
+<rect x="1220" y="365" width="100" height="70" rx="8" fill="#e9f1fb" stroke="#1d5fa8" stroke-width="1.8"/>
+<text x="1270.0" y="388.0" class="t">L3</text>
+<text x="1270.0" y="405.0" class="s">Auto-</text>
+<text x="1270.0" y="422.0" class="s">encoder</text>
+<rect x="1000" y="480" width="320" height="85" rx="8" fill="#e9f1fb" stroke="#1d5fa8" stroke-width="1.8"/>
+<text x="1160.0" y="510.5" class="t">L4 Meta-learner</text>
+<text x="1160.0" y="527.5" class="s">gradient boosting on</text>
+<text x="1160.0" y="544.5" class="s">[rate score, L2, L3] → p</text>
+<rect x="560" y="470" width="380" height="115" rx="8" fill="#fdeceb" stroke="#b3261e" stroke-width="1.8"/>
+<text x="750.0" y="507.0" class="t">Decision &amp; enforcement gate</text>
+<text x="750.0" y="524.0" class="s">L1 verdict → block (enforce, enforce-l1)</text>
+<text x="750.0" y="541.0" class="s">ML verdict → mode · Redis ok · brake ·</text>
+<text x="750.0" y="558.0" class="s">threshold · endpoint list · canary</text>
+<rect x="215" y="470" width="240" height="115" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="335.0" y="507.0" class="t">Response to client</text>
+<text x="335.0" y="524.0" class="s">403 + layer, reason</text>
+<text x="335.0" y="541.0" class="s">413 body too large</text>
+<text x="335.0" y="558.0" class="s">backend response + X-Guard headers</text>
+<rect x="560" y="690" width="200" height="80" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="660.0" y="718.0" class="t">Proxy forwarder</text>
+<text x="660.0" y="735.0" class="s">httpx, pooled</text>
+<text x="660.0" y="752.0" class="s">hop-by-hop stripped</text>
+<rect x="800" y="690" width="200" height="80" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="900.0" y="718.0" class="t">Async log writer</text>
+<text x="900.0" y="735.0" class="s">queue, batches of 50</text>
+<text x="900.0" y="752.0" class="s">sheds when full</text>
+<rect x="1060" y="690" width="240" height="80" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="1180.0" y="718.0" class="t">Admin API  /__guard</text>
+<text x="1180.0" y="735.0" class="s">health · stats</text>
+<text x="1180.0" y="752.0" class="s">reload · brake</text>
+<rect x="560" y="850" width="200" height="80" rx="8" fill="#eef7f0" stroke="#2e7d4f" stroke-width="1.8"/>
+<text x="660.0" y="878.0" class="t">Backend service</text>
+<text x="660.0" y="895.0" class="s">any HTTP API</text>
+<text x="660.0" y="912.0" class="s">internal, no host port</text>
+<path d="M800,849 a110.0,9 0 0,0 220,0 v80 a110.0,9 0 0,1 -220,0 z" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<ellipse cx="910.0" cy="849" rx="110.0" ry="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<text x="910.0" y="873.0" class="t">Event log</text>
+<text x="910.0" y="890.0" class="s">events.jsonl: 34 features,</text>
+<text x="910.0" y="907.0" class="s">verdict, hashed client</text>
+<text x="910.0" y="924.0" class="s">never raw bodies</text>
+<rect x="1060" y="850" width="240" height="80" rx="8" fill="#ffffff" stroke="#1f2430" stroke-width="1.8"/>
+<text x="1180.0" y="878.0" class="t">Security console</text>
+<text x="1180.0" y="895.0" class="s">React, 8 pages</text>
+<text x="1180.0" y="912.0" class="s">polls every 4–5 s</text>
+<rect x="1380" y="690" width="200" height="80" rx="8" fill="#f3edfa" stroke="#7a4fb0" stroke-width="1.8"/>
+<text x="1480.0" y="718.0" class="t">Offline training</text>
+<text x="1480.0" y="735.0" class="s">train.py  (retrain)</text>
+<text x="1480.0" y="752.0" class="s">calibrate.py (threshold)</text>
+<path d="M1380,354 a100.0,9 0 0,0 200,0 v87 a100.0,9 0 0,1 -200,0 z" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<ellipse cx="1480.0" cy="354" rx="100.0" ry="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<text x="1480.0" y="381.5" class="t">Model store</text>
+<text x="1480.0" y="398.5" class="s">scaler, IF, AE, meta,</text>
+<text x="1480.0" y="415.5" class="s">decision.json,</text>
+<text x="1480.0" y="432.5" class="s">calibration.json</text>
+<path d="M160,240 L213,240" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="186" y="232" class="l" fill="#1f2430" text-anchor="middle">HTTP</text>
+<path d="M355,250 L383,250" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<path d="M525,250 L553,250" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<path d="M695,250 L723,250" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<path d="M865,250 L893,250" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<path d="M1035,250 L1108,250" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="1072" y="242" class="l" fill="#1f2430" text-anchor="middle">within limit</text>
+<text x="879" y="196" class="l" fill="#1f2430" text-anchor="middle">no block, + n_flags</text>
+<path d="M435,205 L435,134" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="430" y="172" class="l" fill="#6b7280" text-anchor="end">record</text>
+<path d="M475,134 L475,203" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="481" y="172" class="l" fill="#6b7280" text-anchor="start">counts</text>
+<path d="M795,295 L795,468" fill="none" stroke="#b3261e" stroke-width="2" marker-end="url(#a-red)"/>
+<text x="801" y="380" class="l" fill="#b3261e" text-anchor="start">BLOCK hit</text>
+<text x="801" y="395" class="l" fill="#b3261e" text-anchor="start">(short-circuit)</text>
+<path d="M925,295 L925,468" fill="none" stroke="#b3261e" stroke-width="2" marker-end="url(#a-red)"/>
+<text x="931" y="380" class="l" fill="#b3261e" text-anchor="start">over</text>
+<text x="931" y="395" class="l" fill="#b3261e" text-anchor="start">limit</text>
+<path d="M1150,295 L1150,363" fill="none" stroke="#1d5fa8" stroke-width="2" marker-end="url(#a-blue)"/>
+<path d="M1270,295 L1270,363" fill="none" stroke="#1d5fa8" stroke-width="2" marker-end="url(#a-blue)"/>
+<text x="1210" y="322" class="l" fill="#1d5fa8" text-anchor="middle">features</text>
+<path d="M1150,435 L1150,478" fill="none" stroke="#1d5fa8" stroke-width="2" marker-end="url(#a-blue)"/>
+<text x="1144" y="462" class="l" fill="#1d5fa8" text-anchor="end">score</text>
+<path d="M1270,435 L1270,478" fill="none" stroke="#1d5fa8" stroke-width="2" marker-end="url(#a-blue)"/>
+<text x="1276" y="462" class="l" fill="#1d5fa8" text-anchor="start">error</text>
+<path d="M1010,295 L1010,478" fill="none" stroke="#1d5fa8" stroke-width="2" marker-end="url(#a-blue)"/>
+<text x="1016" y="400" class="l" fill="#1d5fa8" text-anchor="start">rate</text>
+<text x="1016" y="415" class="l" fill="#1d5fa8" text-anchor="start">score</text>
+<path d="M1000,525 L942,525" fill="none" stroke="#1d5fa8" stroke-width="2" marker-end="url(#a-blue)"/>
+<text x="971" y="517" class="l" fill="#1d5fa8" text-anchor="middle">p</text>
+<path d="M560,527 L457,527" fill="none" stroke="#b3261e" stroke-width="2" marker-end="url(#a-red)"/>
+<text x="508" y="519" class="l" fill="#b3261e" text-anchor="middle">block → 403</text>
+<path d="M285,295 L285,468" fill="none" stroke="#b3261e" stroke-width="2" marker-end="url(#a-red)"/>
+<text x="291" y="385" class="l" fill="#b3261e" text-anchor="start">413</text>
+<path d="M650,585 L650,688" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="656" y="615" class="l" fill="#1f2430" text-anchor="start">allow</text>
+<text x="656" y="630" class="l" fill="#1f2430" text-anchor="start">(incl. ML would-block</text>
+<text x="656" y="645" class="l" fill="#1f2430" text-anchor="start">under enforce-l1)</text>
+<path d="M215,527 L162,527" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="188" y="553" class="l" fill="#1f2430" text-anchor="middle">HTTP</text>
+<text x="188" y="568" class="l" fill="#1f2430" text-anchor="middle">response</text>
+<path d="M560,745 L335,745 L335,587" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="440" y="737" class="l" fill="#1f2430" text-anchor="middle">backend response</text>
+<path d="M630,770 L630,848" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="624" y="812" class="l" fill="#1f2430" text-anchor="end">forward</text>
+<path d="M690,848 L690,772" fill="none" stroke="#1f2430" stroke-width="2" marker-end="url(#a-ink)"/>
+<text x="696" y="812" class="l" fill="#1f2430" text-anchor="start">response</text>
+<path d="M880,585 L880,688" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="886" y="662" class="l" fill="#6b7280" text-anchor="start">every decision</text>
+<path d="M760,730 L798,730" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="779" y="722" class="l" fill="#6b7280" text-anchor="middle">status</text>
+<path d="M900,770 L900,846" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="906" y="812" class="l" fill="#6b7280" text-anchor="start">append</text>
+<path d="M1022,890 L1058,890" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="1040" y="882" class="l" fill="#6b7280" text-anchor="middle">read</text>
+<path d="M1140,850 L1140,772" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="1134" y="805" class="l" fill="#6b7280" text-anchor="end">poll, reload,</text>
+<text x="1134" y="820" class="l" fill="#6b7280" text-anchor="end">brake</text>
+<path d="M1220,772 L1220,848" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="1226" y="815" class="l" fill="#6b7280" text-anchor="start">JSON</text>
+<path d="M1090,690 L1090,625 L930,625 L930,587" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="1010" y="617" class="l" fill="#6b7280" text-anchor="middle">brake engage / reset</text>
+<path d="M1250,690 L1250,582" fill="none" stroke="#6b7280" stroke-width="2" marker-end="url(#a-gray)"/>
+<text x="1256" y="640" class="l" fill="#6b7280" text-anchor="start">hot reload</text>
+<path d="M910,938 L910,962 L1480,962 L1480,772" fill="none" stroke="#7a4fb0" stroke-width="2" marker-end="url(#a-purple)"/>
+<text x="1195" y="955" class="l" fill="#7a4fb0" text-anchor="middle">labelled corpus (lab mode) · clean calibration window</text>
+<path d="M1480,690 L1480,452" fill="none" stroke="#7a4fb0" stroke-width="2" marker-end="url(#a-purple)"/>
+<text x="1486" y="575" class="l" fill="#7a4fb0" text-anchor="start">writes</text>
+<text x="1486" y="590" class="l" fill="#7a4fb0" text-anchor="start">artefacts</text>
+<path d="M1380,397 L1332,397" fill="none" stroke="#7a4fb0" stroke-width="2" marker-end="url(#a-purple)"/>
+<text x="1356" y="389" class="l" fill="#7a4fb0" text-anchor="middle">load</text>
+<path d="M1480,345 L1480,250 L1312,250" fill="none" stroke="#7a4fb0" stroke-width="2" marker-end="url(#a-purple)"/>
+<text x="1395" y="242" class="l" fill="#7a4fb0" text-anchor="middle">per-endpoint baseline</text>
+<line x1="24" y1="1000" x2="58" y2="1000" stroke="#1f2430" stroke-width="2.5"/>
+<text x="66" y="1004" font-size="13" fill="#1f2430">request / response</text>
+<line x1="214" y1="1000" x2="248" y2="1000" stroke="#b3261e" stroke-width="2.5"/>
+<text x="256" y="1004" font-size="13" fill="#1f2430">block</text>
+<line x1="404" y1="1000" x2="438" y2="1000" stroke="#1d5fa8" stroke-width="2.5"/>
+<text x="446" y="1004" font-size="13" fill="#1f2430">ML scoring</text>
+<line x1="594" y1="1000" x2="628" y2="1000" stroke="#6b7280" stroke-width="2.5"/>
+<text x="636" y="1004" font-size="13" fill="#1f2430">state, logs, admin</text>
+<line x1="784" y1="1000" x2="818" y2="1000" stroke="#7a4fb0" stroke-width="2.5"/>
+<text x="826" y="1004" font-size="13" fill="#1f2430">offline training</text>
+<text x="1576" y="1004" font-size="12.5" fill="#5b6170" text-anchor="end">Default mode enforce-l1: L1 blocks, ML verdicts are logged and forwarded.</text>
+</svg>
