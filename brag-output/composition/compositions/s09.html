@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s09-root { position: absolute; inset: 0; }
+        #s09-head { position: absolute; left: 140px; top: 120px; right: 140px; display: flex; align-items: flex-end; justify-content: space-between; }
+        #s09-head .h2 { margin-top: 14px; }
+        #s09-count { font-size: 120px; font-weight: 800; letter-spacing: -0.05em; line-height: 0.9; color: var(--accent-2); }
+        #s09-grid { position: absolute; left: 140px; right: 140px; top: 300px; display: flex; gap: 24px; transform-origin: 50% 0; }
+        .s09-col { flex: 1; padding: 24px 22px; }
+        .s09-col .kicker { font-size: 17px; margin-bottom: 14px; display: flex; justify-content: space-between; }
+        .s09-col .kicker i { font-style: normal; color: var(--t-muted); }
+        .s09-chip { display: block; margin-bottom: 8px; padding: 6px 12px; border-radius: 8px; font-family: var(--mono); font-size: 19px; color: var(--t-body); background: rgba(22, 35, 58, 0.6); border: 1px solid rgba(43, 66, 104, 0.5); }
+        .s09-chip.on { color: #fff; background: rgba(59, 130, 246, 0.28); border-color: rgba(147, 197, 253, 0.8); box-shadow: 0 0 18px rgba(59, 130, 246, 0.45); }
+        .s09-sub { margin-top: 18px; }
+        #s09-miss { position: absolute; left: 140px; right: 140px; top: 280px; height: 700px; }
+        #s09-miss .h3 { font-size: 46px; }
+        .s09-card { position: absolute; top: 100px; width: 790px; padding: 36px 40px; }
+        #s09-m1 { left: 0; }
+        #s09-m2 { right: 0; }
+        .s09-x { display: inline-block; font-family: var(--mono); font-size: 22px; padding: 7px 14px; margin: 0 10px 10px 0; border-radius: 8px; color: var(--bad-2); background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(248, 113, 113, 0.45); text-decoration: line-through; text-decoration-thickness: 2px; }
+        .s09-card .lead { margin-top: 18px; font-size: 28px; }
+        .s09-card .res { margin-top: 18px; font-size: 26px; font-weight: 700; color: var(--ok-2); }
+        #s09-stat { margin-top: 18px; display: flex; align-items: baseline; gap: 16px; }
+        #s09-stat b { font-size: 64px; font-weight: 800; color: var(--warn-2); letter-spacing: -0.03em; }
+        #s09-stat span { font-size: 22px; color: var(--t-body); }
+      </style>
+      <div id="s09-root" data-composition-id="s09" data-width="1920" data-height="1080">
+        <div class="scene" id="s09-scene">
+          <div id="s09-head">
+            <div><div class="kicker">src/common/features.py</div><div class="h2">Behavioural features</div></div>
+            <div id="s09-count">34</div>
+          </div>
+          <div id="s09-grid">
+            <div class="panel s09-col" id="s09-g1"><div class="kicker">Body <i>9</i></div>
+              <span class="s09-chip f-len">body_log_size</span><span class="s09-chip f-ent">body_entropy</span><span class="s09-chip f-sp">body_special_ratio</span><span class="s09-chip">body_digit_ratio</span><span class="s09-chip">body_upper_ratio</span><span class="s09-chip">body_nonascii_ratio</span><span class="s09-chip">body_size_z</span><span class="s09-chip">has_body</span><span class="s09-chip">ct_json</span>
+            </div>
+            <div class="panel s09-col" id="s09-g2"><div class="kicker">Path <i>11</i></div>
+              <span class="s09-chip f-len">path_len</span><span class="s09-chip f-dep">path_depth</span><span class="s09-chip">path_max_seg</span><span class="s09-chip f-ent">path_entropy</span><span class="s09-chip f-sp">path_special_ratio</span><span class="s09-chip">path_digit_ratio</span><span class="s09-chip">path_numeric_seg_ratio</span><span class="s09-chip">path_nonascii_ratio</span><span class="s09-chip f-dec">path_decode_delta</span><span class="s09-chip">path_dot_count</span><span class="s09-chip">path_known</span>
+            </div>
+            <div class="panel s09-col" id="s09-g3"><div class="kicker">Query <i>5</i></div>
+              <span class="s09-chip">q_param_count</span><span class="s09-chip f-len">q_max_val_len</span><span class="s09-chip f-len">q_total_len</span><span class="s09-chip f-sp">q_special_ratio</span><span class="s09-chip f-dec">q_decode_delta</span>
+            </div>
+            <div class="panel s09-col" id="s09-g4">
+              <div id="s09-g4a"><div class="kicker">Behaviour <i>1</i></div><span class="s09-chip">win_distinct_paths</span></div>
+              <div id="s09-g4b" class="s09-sub"><div class="kicker">Method <i>7</i></div><span class="s09-chip">m_get · m_post · m_put</span><span class="s09-chip">m_delete · m_patch</span><span class="s09-chip">m_other · is_write</span></div>
+              <div id="s09-g4c" class="s09-sub"><div class="kicker">L1 evidence <i>1</i></div><span class="s09-chip">n_flags</span></div>
+            </div>
+          </div>
+          <div id="s09-miss">
+            <div class="h3" id="s09-mt">Just as important: what is missing.</div>
+            <div class="panel s09-card" id="s09-m1">
+              <div class="kicker">No endpoint identity</div>
+              <div style="margin-top: 18px"><span class="s09-x">http_path one-hot</span></div>
+              <div class="lead" id="s09-m1a">The model learns what a request looks like — not where it went.</div>
+              <div class="res" id="s09-m1b">→ the same model can sit in front of a different backend</div>
+            </div>
+            <div class="panel s09-card" id="s09-m2">
+              <div class="kicker">No client headers</div>
+              <div style="margin-top: 18px" id="s09-hx"><span class="s09-x">header_count</span><span class="s09-x">ua_len</span><span class="s09-x">ua_entropy</span><span class="s09-x">has_ua</span><span class="s09-x">has_referer</span><span class="s09-x">has_auth</span></div>
+              <div class="lead" id="s09-m2a">An attacker copies a browser User-Agent and a Referer for free.</div>
+              <div id="s09-stat"><b>36.7%</b><span>false positives on a legitimate multi-client load while they were present</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.64, 5.53, 7.32, 7.62, 8.55, 9.32, 9.86, 10.51, 11.84, 14.17, 15.56, 17.26, 18.91, 21.2, 23.1, 25.65, 27.05, 30.27, 31.7, 33.47, 35.7];
+          const D = /*DUR*/39.567;
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#s09-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s09-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s09-count", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: "back.out(2)" }, C[0] + 2.4);
+          tl.fromTo("#s09-g1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s09-g2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[2]);
+          tl.fromTo("#s09-g3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[3]);
+          const hi = [[".f-len", C[4]], [".f-dep", C[5]], [".f-ent", C[6]], [".f-sp", C[7]], [".f-dec", C[8]]];
+          hi.forEach(([cls, t], i) => {
+            const els = document.querySelectorAll("#s09-grid " + cls);
+            tl.to(els, { color: "#ffffff", backgroundColor: "rgba(59,130,246,0.28)", borderColor: "rgba(147,197,253,0.8)", boxShadow: "0 0 18px rgba(59,130,246,0.45)", duration: 0.3 }, t);
+            tl.to(els, { color: "#aebcd6", backgroundColor: "rgba(22,35,58,0.6)", borderColor: "rgba(43,66,104,0.5)", boxShadow: "0 0 0px rgba(59,130,246,0)", duration: 0.6 }, (hi[i + 1] ? hi[i + 1][1] : C[9]) - 0.1);
+          });
+          tl.fromTo("#s09-g4", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[9] - 0.2);
+          tl.fromTo("#s09-g4a", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[9]);
+          tl.fromTo("#s09-g4b", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[10]);
+          tl.fromTo("#s09-g4c", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[11]);
+          // phase B: what is missing
+          tl.to("#s09-grid", { opacity: 0, scale: 0.94, duration: 0.6, ease: "power2.in" }, C[12] - 0.5);
+          tl.to("#s09-head", { opacity: 0, duration: 0.5 }, C[12] - 0.5);
+          tl.fromTo("#s09-mt", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, C[12]);
+          tl.fromTo("#s09-m1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[13]);
+          tl.fromTo("#s09-m1a", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[14]);
+          tl.fromTo("#s09-m1b", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[16]);
+          tl.fromTo("#s09-m2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[17]);
+          tl.fromTo("#s09-hx .s09-x", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.12 }, C[17] + 0.3);
+          tl.fromTo("#s09-m2a", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[19]);
+          tl.fromTo("#s09-stat", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6 }, C[20]);
+          tl.to("#s09-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s09"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

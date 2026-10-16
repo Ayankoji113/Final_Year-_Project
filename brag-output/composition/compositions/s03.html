@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s03-root { position: absolute; inset: 0; }
+        #s03-head { position: absolute; left: 140px; top: 120px; width: 1640px; }
+        #s03-head .h2 { margin-top: 14px; }
+        #s03-a { position: absolute; left: 140px; right: 140px; top: 330px; height: 640px; }
+        #s03-cards { display: flex; gap: 40px; }
+        #s03-cards .panel { flex: 1; padding: 34px 38px; }
+        #s03-cards .h3 { font-size: 38px; }
+        #s03-cards .small { margin-top: 10px; }
+        #s03-viz { margin-top: 40px; display: flex; gap: 40px; height: 330px; }
+        #s03-viz .panel { flex: 1; position: relative; padding: 28px 34px; }
+        #s03-viz .cap { font-size: 27px; font-weight: 600; color: var(--t-body); }
+        .s03-rule { position: absolute; left: 470px; top: 92px; width: 6px; height: 196px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+        .s03-rl { position: absolute; left: 430px; top: 290px; font-family: var(--mono); font-size: 17px; color: var(--accent-3); }
+        .s03-req { position: absolute; left: 40px; height: 48px; padding: 0 18px; border-radius: 10px; display: flex; align-items: center; font-family: var(--mono); font-size: 20px; }
+        #s03-r1 { top: 100px; color: var(--bad-2); border: 1px solid rgba(248, 113, 113, 0.6); background: rgba(239, 68, 68, 0.08); }
+        #s03-r2 { top: 200px; color: var(--warn-2); border: 1px dashed rgba(251, 191, 36, 0.7); background: rgba(245, 158, 11, 0.06); }
+        #s03-x1 { position: absolute; left: 500px; top: 100px; font-family: var(--mono); font-size: 22px; color: var(--bad-2); line-height: 48px; }
+        #s03-x2 { position: absolute; left: 680px; top: 200px; font-family: var(--mono); font-size: 22px; color: var(--warn-2); line-height: 48px; }
+        #s03-chart { position: absolute; left: 34px; top: 86px; }
+        #s03-chart path { fill: none; stroke: var(--accent-2); stroke-width: 4; }
+        #s03-limit { stroke: var(--bad-2) !important; stroke-width: 2 !important; stroke-dasharray: 10 8; }
+        .s03-u { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--ok); top: 268px; }
+        #s03-b { position: absolute; left: 140px; right: 140px; top: 170px; height: 760px; }
+        #s03-plus { position: absolute; left: 50%; top: 250px; margin-left: -40px; width: 80px; text-align: center; font-size: 80px; font-weight: 300; color: var(--t-muted); }
+        .s03-col { position: absolute; top: 120px; width: 700px; padding: 50px 50px; }
+        #s03-c1 { left: 0; border-color: rgba(96, 165, 250, 0.55) !important; }
+        #s03-c2 { right: 0; border-color: rgba(165, 180, 252, 0.55) !important; }
+        .s03-col .kicker { font-size: 19px; }
+        .s03-col .h3 { margin-top: 16px; font-size: 52px; }
+        .s03-col .lead { margin-top: 20px; }
+        #s03-c2 .kicker { color: var(--ml-2); }
+        .s03-arrow { margin-top: 26px; font-size: 34px; font-weight: 700; }
+        #s03-c1 .s03-arrow { color: var(--accent-2); }
+        #s03-c2 .s03-arrow { color: var(--ml-2); }
+        #s03-btitle { position: absolute; left: 0; right: 0; top: 0; text-align: center; }
+      </style>
+      <div id="s03-root" data-composition-id="s03" data-width="1920" data-height="1080">
+        <div class="scene" id="s03-scene">
+          <div id="s03-head">
+            <div class="kicker">Why this exists</div>
+            <div class="h2" id="s03-title">REST APIs are the front line.</div>
+          </div>
+          <div id="s03-a">
+            <div id="s03-cards">
+              <div class="panel" id="s03-k1"><div class="h3">Web application firewalls</div><div class="small">match payloads against known signatures</div></div>
+              <div class="panel" id="s03-k2"><div class="h3">Static rate limiters</div><div class="small">one fixed threshold for every client</div></div>
+            </div>
+            <div id="s03-viz">
+              <div class="panel" id="s03-v1">
+                <div class="cap">Only catch what they already know</div>
+                <div class="s03-rule"></div><div class="s03-rl">signature</div>
+                <div class="s03-req" id="s03-r1">known attack</div>
+                <div class="s03-req" id="s03-r2">new attack</div>
+                <div id="s03-x1">✕ blocked</div>
+                <div id="s03-x2">→ slips through</div>
+              </div>
+              <div class="panel" id="s03-v2">
+                <div class="cap">…and block real users during spikes</div>
+                <svg id="s03-chart" width="760" height="200" viewBox="0 0 760 200">
+                  <path id="s03-limit" d="M0 70 H760" />
+                  <path id="s03-line" d="M0 170 C80 168 120 160 180 162 C240 164 280 150 330 120 C370 90 390 20 430 18 C470 16 490 90 530 130 C580 160 640 166 760 164" />
+                </svg>
+                <div class="s03-u" style="left: 360px"></div>
+                <div class="s03-u" style="left: 400px"></div>
+                <div class="s03-u" style="left: 440px"></div>
+                <div class="s03-u" style="left: 480px"></div>
+              </div>
+            </div>
+          </div>
+          <div id="s03-b">
+            <div class="h3" id="s03-btitle">MicroAPI Guard combines both</div>
+            <div class="panel s03-col" id="s03-c1">
+              <div class="kicker">Deterministic rules</div>
+              <div class="h3">Signatures + rate limits</div>
+              <div class="lead">Block only what a legitimate client would essentially never send.</div>
+              <div class="s03-arrow">→ what is certain</div>
+            </div>
+            <div id="s03-plus">+</div>
+            <div class="panel s03-col" id="s03-c2">
+              <div class="kicker">Unsupervised models</div>
+              <div class="h3">Trained only on normal traffic</div>
+              <div class="lead">No attack labels needed — anything far from normal stands out.</div>
+              <div class="s03-arrow">→ what no signature anticipates</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 3.87, 5.14, 8.16, 10.84, 12.19, 15.54, 18.46, 20.69, 22.38, 24.52];
+          const D = /*DUR*/27.377;
+          const tl = gsap.timeline({ paused: true });
+          const line = document.getElementById("s03-line");
+          const LL = line.getTotalLength();
+          gsap.set(line, { strokeDasharray: LL });
+          tl.fromTo("#s03-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s03-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s03-k1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s03-k2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[2] + 0.5);
+          tl.fromTo("#s03-v1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[3] - 0.3);
+          tl.fromTo("#s03-r1", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[3]);
+          tl.fromTo("#s03-r1", { x: 0 }, { x: 250, duration: 0.8, ease: "power2.in" }, C[3] + 0.2);
+          tl.fromTo("#s03-x1", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[3] + 1.0);
+          tl.fromTo("#s03-r2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[3] + 0.9);
+          tl.fromTo("#s03-r2", { x: 0 }, { x: 460, duration: 1.4, ease: "power1.inOut" }, C[3] + 1.2);
+          tl.fromTo("#s03-x2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[3] + 2.4);
+          tl.fromTo("#s03-v2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[4] - 0.2);
+          tl.fromTo(line, { strokeDashoffset: LL }, { strokeDashoffset: 0, duration: 1.6, ease: "power1.inOut" }, C[4]);
+          tl.fromTo(".s03-u", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.12 }, C[5] - 0.4);
+          tl.to(".s03-u", { backgroundColor: "#ef4444", boxShadow: "0 0 18px rgba(239,68,68,0.9)", duration: 0.25, stagger: 0.18 }, C[5] + 0.6);
+          // resolve into the two-column idea
+          tl.to("#s03-a", { opacity: 0, y: -20, duration: 0.5, ease: "power2.in" }, C[6] - 0.5);
+          tl.to("#s03-head", { opacity: 0, duration: 0.4 }, C[6] - 0.5);
+          tl.fromTo("#s03-btitle", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, C[6]);
+          tl.fromTo("#s03-c1", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.7, ease: "power3.out" }, C[7]);
+          tl.fromTo("#s03-plus", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.5 }, C[8] - 0.2);
+          tl.fromTo("#s03-c2", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7, ease: "power3.out" }, C[8]);
+          tl.fromTo("#s03-c2 .s03-arrow", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[10]);
+          tl.fromTo("#s03-c1 .s03-arrow", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[7] + 0.9);
+          tl.to("#s03-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s03"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

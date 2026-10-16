@@ -1,0 +1,1 @@
+Let's send some traffic. A normal product request goes straight through: two hundred, OK. A S Q L injection is blocked at layer one, with the rule and the reason. A double-encoded path traversal: still blocked. A script tag: blocked. A request for the cloud metadata endpoint, the classic S S R F credential grab: blocked. And the name O'Brien? Two hundred, OK.

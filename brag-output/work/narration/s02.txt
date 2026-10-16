@@ -1,0 +1,1 @@
+This is Micro A P I Guard: a real-time A P I security gateway, built on a learned stacking ensemble. It sits in front of any H T T P backend, inspects every request through four layers of detection, and blocks malicious traffic inline, without a single change to the service it protects.

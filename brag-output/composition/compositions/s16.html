@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s16-root { position: absolute; inset: 0; }
+        #s16-frame { left: 240px; top: 110px; width: 1440px; }
+        #s16-frame .view { height: 810px; }
+        .s16-canvas { position: absolute; left: 0; top: 0; width: 1920px; transform-origin: 0 0; }
+        #s16-ca { height: 1080px; }
+        #s16-cb { height: 1607px; }
+        .s16-canvas img, .s16-canvas video { position: absolute; left: 0; top: 0; width: 1920px; }
+        .s16-hl { position: absolute; border: 4px solid var(--accent-2); border-radius: 14px; box-shadow: 0 0 40px rgba(96, 165, 250, 0.5); }
+        .s16-hl.bad { border-color: var(--bad-2); box-shadow: 0 0 40px rgba(248, 113, 113, 0.5); }
+        .s16-hl.ml { border-color: var(--ml-2); box-shadow: 0 0 40px rgba(165, 180, 252, 0.5); }
+        .s16-hl.warn { border-color: var(--warn-2); box-shadow: 0 0 40px rgba(251, 191, 36, 0.45); }
+        .s16-hl.ok { border-color: var(--ok-2); box-shadow: 0 0 40px rgba(74, 222, 128, 0.5); }
+        #s16-caps { position: absolute; left: 240px; right: 240px; top: 978px; height: 44px; }
+        .s16-cap { position: absolute; left: 0; top: 0; display: flex; gap: 14px; align-items: center; font-size: 23px; font-weight: 600; color: var(--t-body); white-space: nowrap; }
+        .s16-cap .pill { font-size: 20px; padding: 6px 16px; }
+      </style>
+      <div id="s16-root" data-composition-id="s16" data-width="1920" data-height="1080">
+        <div class="scene" id="s16-scene">
+          <div class="browser" id="s16-frame">
+            <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url" id="s16-url">localhost:5173/#/threats — Threats</span></div>
+            <div class="view">
+              <div class="s16-canvas" id="s16-ca">
+                <img src="assets/demo/threats-view.png" alt="" style="height: 1080px" />
+                <video id="s16-vid" src="assets/demo/threats-rec.mp4" data-start="0.2" data-duration="8" muted playsinline style="height: 1080px"></video>
+                <div class="s16-hl bad" id="s16-h1" style="left: 244px; top: 73px; width: 411px; height: 136px"></div>
+                <div class="s16-hl ml" id="s16-h2" style="left: 1489px; top: 73px; width: 411px; height: 136px"></div>
+                <div class="s16-hl warn" id="s16-h3" style="left: 244px; top: 217px; width: 1656px; height: 56px"></div>
+              </div>
+              <div class="s16-canvas" id="s16-cb">
+                <img src="assets/demo/inv-block.png" alt="" style="height: 1607px" />
+                <div class="s16-hl bad" id="s16-h4" style="left: 1077px; top: 269px; width: 822px; height: 335px"></div>
+                <div class="s16-hl ok" id="s16-h5" style="left: 252px; top: 736px; width: 400px; height: 50px"></div>
+                <div class="s16-hl" id="s16-h6" style="left: 1093px; top: 699px; width: 790px; height: 102px"></div>
+                <div class="s16-hl" id="s16-h7" style="left: 244px; top: 1078px; width: 1656px; height: 400px"></div>
+                <div class="s16-hl ml" id="s16-h8" style="left: 244px; top: 856px; width: 1656px; height: 130px"></div>
+                <div class="s16-hl ok" id="s16-h9" style="left: 252px; top: 594px; width: 560px; height: 44px"></div>
+              </div>
+            </div>
+          </div>
+          <div id="s16-caps">
+            <div class="s16-cap" id="s16-t1"><span class="pill bad">enforced blocks</span><span>are never mixed with</span><span class="pill ml">ML detections</span></div>
+            <div class="s16-cap" id="s16-t2"><span class="pill bad">traversal.dotdot + traversal.unix_secrets</span><span>blocked in 1.258 ms — no model ran</span></div>
+            <div class="s16-cap" id="s16-t3"><span>Stored:</span><span class="pill ml">34-feature vector</span><span class="pill ok">pseudonymised client hash</span><span>— never the raw request</span></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.56, 6.01, 8.31, 11.04, 13.99, 15.88, 18.41, 19.78];
+          const D = /*DUR*/23.063;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set(".s16-canvas", { scale: 0.75 });
+          const hl = (id, t, out) => {
+            tl.fromTo(id, { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power2.out" }, t);
+            if (out) tl.to(id, { opacity: 0, duration: 0.4 }, out);
+          };
+          const cap = (id, t, out) => {
+            tl.fromTo(id, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, t);
+            if (out) tl.to(id, { opacity: 0, duration: 0.3 }, out);
+          };
+          tl.fromTo("#s16-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s16-frame", { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power3.out" }, 0.1);
+          // phase A: threats page
+          hl("#s16-h1", C[0] + 1.6);
+          hl("#s16-h2", C[0] + 2.4);
+          hl("#s16-h3", C[0] + 3.4);
+          cap("#s16-t1", C[0] + 1.8, C[1] - 0.2);
+          // phase B: investigation of one blocked request
+          tl.fromTo("#s16-cb", { opacity: 0 }, { opacity: 1, duration: 0.6 }, C[1]);
+          tl.to("#s16-ca", { opacity: 0, duration: 0.6 }, C[1]);
+          tl.set("#s16-url", { textContent: "localhost:5173/#/investigate/666885 — Investigation" }, C[1] + 0.3);
+          hl("#s16-h4", C[2], C[3] + 1.2);
+          hl("#s16-h5", C[3], C[5] - 0.4);
+          hl("#s16-h6", C[4], C[5] - 0.4);
+          cap("#s16-t2", C[3], C[5] - 0.3);
+          tl.fromTo("#s16-cb", { y: 0 }, { y: -397, duration: 1.4, ease: "power2.inOut" }, C[5] - 0.3);
+          hl("#s16-h7", C[5] + 1.0);
+          hl("#s16-h8", C[6]);
+          hl("#s16-h9", C[7]);
+          cap("#s16-t3", C[6]);
+          tl.to("#s16-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s16"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s21-root { position: absolute; inset: 0; }
+        #s21-head { position: absolute; left: 140px; top: 120px; }
+        #s21-head .h2 { margin-top: 14px; }
+        #s21-grid { position: absolute; left: 140px; right: 140px; top: 330px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 26px; }
+        .s21-t { padding: 36px 38px; height: 280px; }
+        .s21-t .v { font-size: 120px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--t-hi); }
+        .s21-t .v.word { font-size: 84px; letter-spacing: -0.03em; padding-top: 18px; }
+        .s21-t .l { margin-top: 16px; font-size: 26px; color: var(--t-body); }
+        .s21-t .m { margin-top: 6px; font-family: var(--mono); font-size: 19px; color: var(--t-muted); }
+        #s21-term { position: absolute; left: 140px; right: 140px; top: 650px; padding: 30px 40px; font-family: var(--mono); font-size: 27px; line-height: 1.6; }
+        #s21-term .p { color: var(--accent-2); }
+        #s21-term .ok { color: var(--ok-2); }
+      </style>
+      <div id="s21-root" data-composition-id="s21" data-width="1920" data-height="1080">
+        <div class="scene" id="s21-scene">
+          <div id="s21-head">
+            <div class="kicker">Verification</div>
+            <div class="h2">Measured, not assumed.</div>
+          </div>
+          <div id="s21-grid">
+            <div class="panel s21-t" id="s21-a"><div class="v" id="s21-n">0</div><div class="l">pytest tests</div><div class="m">src/tests</div></div>
+            <div class="panel s21-t" id="s21-b"><div class="v">10</div><div class="l">seeds · bootstrap 95% CIs</div><div class="m">ml_pipeline/validate.py</div></div>
+            <div class="panel s21-t" id="s21-c"><div class="v word">McNemar</div><div class="l">vs single-model baselines</div><div class="m">ml_pipeline/compare.py</div></div>
+          </div>
+          <div class="panel" id="s21-term">
+            <div id="s21-l1"><span class="p">$ </span>docker compose up -d</div>
+            <div id="s21-l2"><span class="p">$ </span>curl localhost:5000/__guard/health</div>
+            <div id="s21-l3"><span class="ok">{"status": "healthy", "mode": "enforce-l1", …}</span></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 4.89, 8.14, 12.11];
+          const D = /*DUR*/16.807;
+          const tl = gsap.timeline({ paused: true });
+          const n = { v: 0 }, el = document.getElementById("s21-n");
+          tl.fromTo("#s21-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s21-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s21-a", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C[0] + 0.4);
+          tl.fromTo(n, { v: 0 }, { v: 137, duration: 2.0, ease: "power2.out", onUpdate: () => (el.textContent = Math.round(n.v)) }, C[0] + 0.6);
+          tl.fromTo("#s21-b", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s21-c", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C[2]);
+          tl.fromTo("#s21-term", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C[3] - 0.2);
+          tl.fromTo("#s21-l1", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.6, ease: "steps(24)" }, C[3]);
+          tl.fromTo("#s21-l2", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.7, ease: "steps(28)" }, C[3] + 0.9);
+          tl.fromTo("#s21-l3", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[3] + 1.8);
+          tl.to("#s21-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s21"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

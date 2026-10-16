@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #chrome-root { position: absolute; inset: 0; pointer-events: none; }
+        #chrome-top { position: absolute; left: 64px; top: 44px; display: flex; align-items: center; gap: 18px;
+          font-family: var(--mono); font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; }
+        #chrome-brand { color: var(--t-muted); }
+        #chrome-sep { width: 34px; height: 1px; background: rgba(96, 165, 250, 0.6); }
+        #chrome-labels { position: relative; height: 24px; width: 900px; }
+        #chrome-labels span { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--accent-2); opacity: 0; }
+        #chrome-track { position: absolute; left: 64px; right: 64px; bottom: 36px; height: 2px; background: rgba(43, 66, 104, 0.45); border-radius: 2px; }
+        #chrome-fill { position: absolute; left: 0; top: 0; height: 2px; width: 1792px; background: linear-gradient(90deg, #3b82f6, #818cf8); border-radius: 2px; transform-origin: 0 50%; }
+      </style>
+      <div id="chrome-root" data-composition-id="chrome" data-width="1920" data-height="1080">
+        <div id="chrome-wrap">
+          <div id="chrome-top">
+            <span id="chrome-brand">MicroAPI Guard</span>
+            <span id="chrome-sep"></span>
+            <div id="chrome-labels"></div>
+          </div>
+          <div id="chrome-track"><div id="chrome-fill"></div></div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const CH = /*CHAPTERS*/[{"t": 0.0, "d": 12.512, "label": null}, {"t": 12.512, "d": 20.772, "label": null}, {"t": 33.284, "d": 27.377, "label": "The problem"}, {"t": 60.661, "d": 35.233, "label": "Architecture"}, {"t": 95.894, "d": 26.069, "label": "Layer 1 · Normalization"}, {"t": 121.963, "d": 35.03, "label": "Layer 1 · Signatures"}, {"t": 156.993, "d": 25.671, "label": "Layer 1 · Rate limiting"}, {"t": 182.664, "d": 17.276, "label": "Layer 1 · Short-circuit"}, {"t": 199.94, "d": 39.567, "label": "Feature extraction"}, {"t": 239.507, "d": 28.209, "label": "Layers 2 + 3"}, {"t": 267.716, "d": 25.436, "label": "Layer 4 · Meta-learner"}, {"t": 293.152, "d": 24.913, "label": "Engineering safeguards"}, {"t": 318.065, "d": 22.189, "label": "Live demo · Console"}, {"t": 340.254, "d": 25.517, "label": "Live demo · Attacks"}, {"t": 365.771, "d": 19.009, "label": "Live demo · Traffic"}, {"t": 384.78, "d": 23.063, "label": "Live demo · Investigation"}, {"t": 407.843, "d": 17.937, "label": "Live demo · Health"}, {"t": 425.78, "d": 37.741, "label": "The honest finding"}, {"t": 463.521, "d": 26.959, "label": "Results"}, {"t": 490.48, "d": 33.353, "label": "Enforcement"}, {"t": 523.833, "d": 16.807, "label": "Verification"}, {"t": 540.64, "d": 11.573, "label": null}];
+          const T = /*TOTAL*/552.213;
+          const tl = gsap.timeline({ paused: true });
+          const box = document.getElementById("chrome-labels");
+          // Group consecutive scenes that share a label into one span.
+          const groups = [];
+          CH.forEach((c) => {
+            const last = groups[groups.length - 1];
+            if (last && last.label === c.label) last.end = c.t + c.d;
+            else groups.push({ label: c.label, start: c.t, end: c.t + c.d });
+          });
+          groups.forEach((g, i) => {
+            if (!g.label) return;
+            const s = document.createElement("span");
+            s.id = "chrome-l" + i;
+            s.textContent = g.label;
+            box.appendChild(s);
+            tl.fromTo(s, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, g.start + 0.3);
+            tl.to(s, { opacity: 0, y: -8, duration: 0.4, ease: "power2.in" }, g.end - 0.45);
+          });
+          // Whole chrome hidden while unlabelled scenes (cold open, title, outro) play.
+          const first = groups.find((g) => g.label);
+          const lastLab = [...groups].reverse().find((g) => g.label);
+          tl.fromTo("#chrome-wrap", { opacity: 0 }, { opacity: 1, duration: 0.8 }, first.start);
+          tl.to("#chrome-wrap", { opacity: 0, duration: 0.8 }, lastLab.end - 0.6);
+          tl.fromTo("#chrome-fill", { scaleX: 0 }, { scaleX: 1, duration: T, ease: "none" }, 0);
+          window.__timelines["chrome"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

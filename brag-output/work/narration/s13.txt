@@ -1,0 +1,1 @@
+Now, let's see it running. This is the security console: eight pages, built with React, TypeScript, and Re-charts, reading live from the gateway's health and stats endpoints, and its event log. Nothing on screen is simulated. The gateway is healthy, Reddis is connected, the models are loaded, and the backend is responding.

@@ -1,0 +1,1 @@
+Before any rule runs, the payload is normalized, because attackers hide inside encodings. The gateway percent-decodes up to four times, unescapes H.T.M.L. entities, folds Unicode with N.F.K.C., and strips null bytes. Watch a double-encoded path traversal collapse. Percent two five two E becomes percent two E, which becomes a plain dot dot slash. Now the signature can see it.

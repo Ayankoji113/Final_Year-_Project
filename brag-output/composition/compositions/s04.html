@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s04-root { position: absolute; inset: 0; }
+        #s04-head { position: absolute; left: 140px; top: 120px; }
+        #s04-head .h2 { margin-top: 14px; }
+        #s04-net { position: absolute; left: 140px; top: 330px; width: 1640px; height: 600px; }
+        .s04-node { position: absolute; width: 330px; height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; }
+        .s04-node b { font-size: 34px; font-weight: 700; color: var(--t-hi); }
+        .s04-node em { font-style: normal; font-family: var(--mono); font-size: 20px; color: var(--t-muted); }
+        #s04-client { left: 0; top: 170px; }
+        #s04-gw { left: 560px; top: 170px; border-color: rgba(96, 165, 250, 0.85) !important; box-shadow: 0 0 80px rgba(59, 130, 246, 0.25), 0 30px 80px rgba(0, 0, 0, 0.6) !important; }
+        #s04-gw em { color: var(--accent-3); }
+        #s04-inet { position: absolute; left: 1080px; top: 0; width: 560px; height: 520px; border: 2px dashed rgba(96, 165, 250, 0.4); border-radius: 26px; }
+        #s04-inet .kicker { position: absolute; left: 30px; top: 22px; font-size: 17px; color: var(--t-muted); }
+        #s04-be { left: 1195px; top: 80px; }
+        #s04-redis { left: 1195px; top: 300px; }
+        .s04-wire { position: absolute; height: 2px; background: rgba(96, 165, 250, 0.6); transform-origin: 0 50%; }
+        #s04-w1 { left: 335px; top: 245px; width: 220px; }
+        #s04-w2 { left: 895px; top: 200px; width: 295px; transform: rotate(-12deg); }
+        #s04-w3 { left: 895px; top: 290px; width: 295px; transform: rotate(14deg); }
+        #s04-port { position: absolute; left: 360px; top: 200px; font-family: var(--mono); font-size: 20px; color: var(--accent-3); }
+        #s04-bypass { position: absolute; left: 0; top: 0; width: 1640px; height: 600px; overflow: visible; }
+        #s04-bypass path { fill: none; stroke: rgba(248, 113, 113, 0.8); stroke-width: 3; stroke-dasharray: 12 10; }
+        #s04-bx { position: absolute; left: 700px; top: 470px; font-size: 64px; font-weight: 800; color: var(--bad-2); }
+        #s04-bt { position: absolute; left: 790px; top: 492px; font-size: 26px; font-weight: 600; color: var(--bad-2); }
+        #s04-pipe { position: absolute; left: 340px; top: 250px; width: 1240px; }
+        .s04-row { position: relative; display: flex; align-items: center; height: 82px; margin-bottom: 14px; padding: 0 34px; border-radius: 16px; background: rgba(11, 18, 32, 0.8); border: 1px solid rgba(43, 66, 104, 0.6); }
+        .s04-row .tag { width: 92px; font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--accent-2); }
+        .s04-row .nm { width: 520px; font-size: 30px; font-weight: 700; color: var(--t-hi); }
+        .s04-row .ds { font-size: 22px; color: var(--t-muted); }
+        .s04-row.ml .tag { color: var(--ml-2); }
+        .s04-glow { position: absolute; inset: -1px; border-radius: 16px; border: 2px solid var(--accent-2); box-shadow: 0 0 40px rgba(59, 130, 246, 0.35); opacity: 0; }
+        .s04-row.ml .s04-glow { border-color: var(--ml-2); box-shadow: 0 0 40px rgba(129, 140, 248, 0.35); }
+        #s04-rail { position: absolute; left: 300px; top: 250px; width: 2px; height: 566px; background: rgba(96, 165, 250, 0.25); }
+        #s04-dot { position: absolute; left: 293px; top: 280px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-3); box-shadow: 0 0 24px rgba(147, 197, 253, 0.9); }
+        #s04-chips { position: absolute; left: 0; right: 0; top: 880px; display: flex; justify-content: center; gap: 22px; }
+        #s04-chips span { font-family: var(--mono); font-size: 24px; font-weight: 500; padding: 12px 26px; border-radius: 12px; color: var(--t-hi); background: rgba(22, 35, 58, 0.8); border: 1px solid rgba(43, 66, 104, 0.9); }
+      </style>
+      <div id="s04-root" data-composition-id="s04" data-width="1920" data-height="1080">
+        <div class="scene" id="s04-scene">
+          <div id="s04-head">
+            <div class="kicker">Architecture</div>
+            <div class="h2" id="s04-title">One door in. Nothing around it.</div>
+          </div>
+          <div id="s04-net">
+            <div id="s04-inet"><div class="kicker">internal network</div></div>
+            <div class="s04-wire" id="s04-w1"></div>
+            <div class="s04-wire" id="s04-w2"></div>
+            <div class="s04-wire" id="s04-w3"></div>
+            <div id="s04-port">:5000</div>
+            <div class="panel s04-node" id="s04-client"><b>Clients</b><em>the internet</em></div>
+            <div class="panel s04-node" id="s04-gw"><b>MicroAPI Guard</b><em>:5000 · the only published port</em></div>
+            <div class="panel s04-node" id="s04-be"><b>Backend</b><em>:8000 · no host mapping</em></div>
+            <div class="panel s04-node" id="s04-redis"><b>Redis</b><em>:6379 · no host mapping</em></div>
+            <svg id="s04-bypass" viewBox="0 0 1640 600"><path id="s04-bp" d="M165 330 C 300 560, 1000 600, 1250 230" /></svg>
+            <div id="s04-bx">✕</div>
+            <div id="s04-bt">cannot be bypassed</div>
+          </div>
+          <div id="s04-rail"></div>
+          <div id="s04-dot"></div>
+          <div id="s04-pipe">
+            <div class="s04-row"><div class="s04-glow"></div><div class="tag">0</div><div class="nm">Normalization</div><div class="ds">decode · unescape · NFKC fold · strip</div></div>
+            <div class="s04-row"><div class="s04-glow"></div><div class="tag">L1</div><div class="nm">Signature rules + rate limits</div><div class="ds">26 patterns · Redis sliding windows</div></div>
+            <div class="s04-row"><div class="s04-glow"></div><div class="tag">FE</div><div class="nm">Feature extraction</div><div class="ds">34 behavioural features</div></div>
+            <div class="s04-row ml"><div class="s04-glow"></div><div class="tag">L2</div><div class="nm">Isolation Forest</div><div class="ds">unsupervised · normal traffic only</div></div>
+            <div class="s04-row ml"><div class="s04-glow"></div><div class="tag">L3</div><div class="nm">Autoencoder</div><div class="ds">unsupervised · NumPy</div></div>
+            <div class="s04-row ml"><div class="s04-glow"></div><div class="tag">L4</div><div class="nm">Gradient-boosted meta-learner</div><div class="ds">makes the decision</div></div>
+          </div>
+          <div id="s04-chips"><span>FastAPI</span><span>Redis</span><span>scikit-learn</span><span>NumPy</span><span>Docker</span></div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.56, 2.28, 5.28, 7.56, 8.25, 9.62, 11.49, 13.91, 16.09, 18.73, 19.9, 21.98, 23.04, 24.38, 26.09, 26.39, 28.49, 29.57, 29.93, 30.92, 32.17];
+          const D = /*DUR*/35.233;
+          const tl = gsap.timeline({ paused: true });
+          const bp = document.getElementById("s04-bp");
+          const BL = bp.getTotalLength();
+          gsap.set(bp, { strokeDasharray: "12 10" });
+          tl.fromTo("#s04-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s04-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s04-client", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s04-w1", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[1] + 0.5);
+          tl.fromTo("#s04-gw", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.6)" }, C[1] + 0.8);
+          tl.fromTo("#s04-port", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[2]);
+          tl.fromTo("#s04-inet", { opacity: 0 }, { opacity: 1, duration: 0.6 }, C[4]);
+          tl.fromTo("#s04-be", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[5]);
+          tl.fromTo("#s04-redis", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[5] + 0.5);
+          tl.fromTo("#s04-w2", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[5] + 0.3);
+          tl.fromTo("#s04-w3", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[5] + 0.8);
+          tl.fromTo(bp, { opacity: 0, strokeDashoffset: BL }, { opacity: 1, strokeDashoffset: 0, duration: 1.3, ease: "power1.inOut" }, C[6]);
+          tl.fromTo("#s04-bx", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)" }, C[7]);
+          tl.fromTo("#s04-bt", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[7] + 0.2);
+          // phase B: the pipeline
+          tl.to("#s04-net", { opacity: 0, y: -20, duration: 0.5, ease: "power2.in" }, C[8] - 0.6);
+          tl.to("#s04-title", { opacity: 0, duration: 0.3 }, C[8] - 0.6);
+          tl.fromTo(".s04-row", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, stagger: 0.08, ease: "power2.out" }, C[8]);
+          tl.fromTo("#s04-rail", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[8]);
+          const steps = [C[9], C[10], C[11], C[12], C[13], C[15]];
+          const glows = document.querySelectorAll("#s04-pipe .s04-glow");
+          tl.fromTo("#s04-dot", { opacity: 0, y: 0 }, { opacity: 1, y: 0, duration: 0.3 }, C[9] - 0.3);
+          steps.forEach((t, i) => {
+            tl.to("#s04-dot", { y: i * 96, duration: 0.45, ease: "power2.inOut" }, t - 0.45);
+            tl.fromTo(glows[i], { opacity: 0 }, { opacity: 1, duration: 0.35 }, t);
+            if (i < steps.length - 1) tl.to(glows[i], { opacity: 0.25, duration: 0.6 }, steps[i + 1]);
+          });
+          const chipAt = [C[16], C[17], C[18], C[19], C[20]];
+          document.querySelectorAll("#s04-chips span").forEach((el, i) => {
+            tl.fromTo(el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, chipAt[i]);
+          });
+          tl.to("#s04-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s04"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

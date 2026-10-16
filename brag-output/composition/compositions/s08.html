@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s08-root { position: absolute; inset: 0; }
+        #s08-flow { position: absolute; left: 140px; top: 180px; width: 860px; height: 760px; }
+        .s08-box { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; height: 120px; }
+        .s08-box b { font-size: 30px; font-weight: 700; color: var(--t-hi); }
+        .s08-box em { font-style: normal; font-family: var(--mono); font-size: 19px; color: var(--t-muted); }
+        #s08-req { left: 0; top: 0; width: 300px; }
+        #s08-l1 { left: 0; top: 230px; width: 300px; border-color: rgba(96, 165, 250, 0.8) !important; }
+        #s08-stop { left: 520px; top: 230px; width: 300px; background: linear-gradient(180deg, rgba(60, 10, 14, 0.95), rgba(26, 6, 10, 0.95)) !important; border-color: rgba(248, 113, 113, 0.7) !important; box-shadow: 0 0 80px rgba(239, 68, 68, 0.25) !important; }
+        #s08-stop b { color: var(--bad-2); font-size: 44px; }
+        #s08-ml { left: 0; top: 520px; width: 300px; }
+        .s08-v { position: absolute; left: 149px; width: 2px; background: rgba(96, 165, 250, 0.6); transform-origin: 50% 0; }
+        #s08-v1 { top: 122px; height: 106px; }
+        #s08-v2 { top: 352px; height: 166px; background: rgba(129, 140, 248, 0.25); }
+        .s08-h { position: absolute; left: 302px; height: 2px; width: 216px; background: var(--bad-2); transform-origin: 0 50%; }
+        #s08-h1 { top: 270px; }
+        #s08-h2 { top: 310px; }
+        .s08-hl { position: absolute; left: 330px; font-family: var(--mono); font-size: 18px; color: var(--bad-2); }
+        #s08-hl1 { top: 236px; }
+        #s08-hl2 { top: 318px; }
+        #s08-never { position: absolute; left: 330px; top: 560px; font-size: 26px; font-weight: 600; color: var(--t-muted); }
+        #s08-quote { position: absolute; left: 1060px; top: 250px; width: 720px; padding: 50px 52px; }
+        #s08-quote .q { font-size: 38px; font-weight: 600; line-height: 1.35; color: var(--t-hi); letter-spacing: -0.01em; }
+        #s08-quote .q span { color: var(--accent-2); }
+        #s08-quote .src { margin-top: 28px; font-family: var(--mono); font-size: 20px; color: var(--t-muted); }
+        #s08-qm { position: absolute; left: 34px; top: -40px; font-size: 140px; font-weight: 800; color: rgba(96, 165, 250, 0.35); line-height: 1; }
+      </style>
+      <div id="s08-root" data-composition-id="s08" data-width="1920" data-height="1080">
+        <div class="scene" id="s08-scene">
+          <div id="s08-flow">
+            <div class="panel s08-box" id="s08-req"><b>request</b><em>normalized</em></div>
+            <div class="s08-v" id="s08-v1"></div>
+            <div class="panel s08-box" id="s08-l1"><b>Layer 1</b><em>rules + rate</em></div>
+            <div class="s08-h" id="s08-h1"></div>
+            <div class="s08-h" id="s08-h2"></div>
+            <div class="s08-hl" id="s08-hl1">BLOCK signature</div>
+            <div class="s08-hl" id="s08-hl2">rate breach</div>
+            <div class="panel s08-box" id="s08-stop"><b>403</b><em>stops here</em></div>
+            <div class="s08-v" id="s08-v2"></div>
+            <div class="panel s08-box" id="s08-ml"><b>L2 · L3 · L4</b><em>models</em></div>
+            <div id="s08-never">never consulted</div>
+          </div>
+          <div class="panel" id="s08-quote">
+            <div id="s08-qm">“</div>
+            <div class="q">Sending a confirmed <span>UNION SELECT</span> to a statistical model to ask its opinion adds latency and a chance of being wrong about something already certain.</div>
+            <div class="src">— src/gateway/detector.py</div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.53, 2.68, 4.47, 6.17, 10.75, 12.63];
+          const D = /*DUR*/17.276;
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#s08-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s08-req", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.5 }, 0.2);
+          tl.fromTo("#s08-v1", { scaleY: 0 }, { scaleY: 1, duration: 0.4 }, 0.5);
+          tl.fromTo("#s08-l1", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, 0.7);
+          tl.fromTo("#s08-h1", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, C[0] + 0.3);
+          tl.fromTo("#s08-hl1", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[0] + 0.4);
+          tl.fromTo("#s08-h2", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, C[1] + 0.2);
+          tl.fromTo("#s08-hl2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[1] + 0.3);
+          tl.fromTo("#s08-v2", { scaleY: 0 }, { scaleY: 1, duration: 0.5 }, C[2]);
+          tl.fromTo("#s08-ml", { opacity: 0 }, { opacity: 0.35, duration: 0.5 }, C[2] + 0.3);
+          tl.fromTo("#s08-never", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[2] + 0.8);
+          tl.fromTo("#s08-stop", { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, C[3] - 0.1);
+          tl.fromTo("#s08-quote", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.8, ease: "power3.out" }, C[4] - 0.4);
+          tl.to("#s08-flow", { opacity: 0.55, duration: 0.6 }, C[4]);
+          tl.to("#s08-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s08"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,1102 @@
+{
+ "s01": {
+  "dur": 10.112,
+  "how": "exact",
+  "clauses": [
+   [
+    "Every A P I is a door.",
+    0.04
+   ],
+   [
+    "Most requests knock politely.",
+    1.83
+   ],
+   [
+    "Some arrive with a crowbar.",
+    3.78
+   ],
+   [
+    "This one asks the database for every password it holds.",
+    5.74
+   ],
+   [
+    "It never gets there.",
+    9.1
+   ]
+  ]
+ },
+ "s02": {
+  "dur": 19.072,
+  "how": "snap 4/7",
+  "clauses": [
+   [
+    "This is Micro A P I Guard:",
+    0.06
+   ],
+   [
+    "a real-time A P I security gateway,",
+    2.38
+   ],
+   [
+    "built on a learned stacking ensemble.",
+    4.96
+   ],
+   [
+    "It sits in front of any H T T P backend,",
+    7.51
+   ],
+   [
+    "inspects every request through four layers of detection,",
+    9.5
+   ],
+   [
+    "and blocks malicious traffic inline,",
+    13.15
+   ],
+   [
+    "without a single change to the service it protects.",
+    15.55
+   ]
+  ]
+ },
+ "s03": {
+  "dur": 25.877,
+  "how": "exact",
+  "clauses": [
+   [
+    "Microservices turned rest A P I's into the front line.",
+    0.04
+   ],
+   [
+    "The usual defences,",
+    3.37
+   ],
+   [
+    "web application firewalls and static rate limiters,",
+    4.64
+   ],
+   [
+    "only catch what they already have a signature for.",
+    7.66
+   ],
+   [
+    "And during traffic spikes,",
+    10.34
+   ],
+   [
+    "they often block the very users they're meant to protect.",
+    11.69
+   ],
+   [
+    "Micro A P I Guard combines both worlds:",
+    15.04
+   ],
+   [
+    "deterministic rules for what is certain,",
+    17.96
+   ],
+   [
+    "and unsupervised models,",
+    20.19
+   ],
+   [
+    "trained only on normal traffic,",
+    21.88
+   ],
+   [
+    "for what no signature anticipates.",
+    24.02
+   ]
+  ]
+ },
+ "s04": {
+  "dur": 32.933,
+  "how": "snap 16/21",
+  "clauses": [
+   [
+    "Here is the shape of it.",
+    0.06
+   ],
+   [
+    "Clients reach the gateway on port five thousand,",
+    1.78
+   ],
+   [
+    "the only port that is published.",
+    4.78
+   ],
+   [
+    "Behind it,",
+    7.06
+   ],
+   [
+    "on an internal network,",
+    7.75
+   ],
+   [
+    "sit the backend and Reddis,",
+    9.12
+   ],
+   [
+    "deliberately unreachable from the host,",
+    10.99
+   ],
+   [
+    "so the gateway cannot be bypassed.",
+    13.41
+   ],
+   [
+    "Every request flows down one pipeline:",
+    15.59
+   ],
+   [
+    "normalization,",
+    18.23
+   ],
+   [
+    "layer one rules and rate limits,",
+    19.4
+   ],
+   [
+    "feature extraction,",
+    21.48
+   ],
+   [
+    "an Isolation Forest,",
+    22.54
+   ],
+   [
+    "an autoencoder,",
+    23.88
+   ],
+   [
+    "and finally,",
+    25.59
+   ],
+   [
+    "a gradient-boosted meta-learner.",
+    25.89
+   ],
+   [
+    "Fast A P I,",
+    27.99
+   ],
+   [
+    "Reddis,",
+    29.07
+   ],
+   [
+    "sci kit learn,",
+    29.43
+   ],
+   [
+    "and Num Pie,",
+    30.42
+   ],
+   [
+    "all running in Docker.",
+    31.67
+   ]
+  ]
+ },
+ "s05": {
+  "dur": 24.469,
+  "how": "snap 9/11",
+  "clauses": [
+   [
+    "Before any rule runs,",
+    0.05
+   ],
+   [
+    "the payload is normalized,",
+    1.47
+   ],
+   [
+    "because attackers hide inside encodings.",
+    2.63
+   ],
+   [
+    "The gateway percent-decodes up to four times,",
+    5.32
+   ],
+   [
+    "unescapes H T M L entities,",
+    8.74
+   ],
+   [
+    "folds Unicode with N F K C,",
+    10.3
+   ],
+   [
+    "and strips null bytes.",
+    12.51
+   ],
+   [
+    "Watch a double-encoded path traversal collapse.",
+    14.17
+   ],
+   [
+    "Percent two five two E becomes percent two E,",
+    17.25
+   ],
+   [
+    "which becomes a plain dot dot slash.",
+    20.56
+   ],
+   [
+    "Now the signature can see it.",
+    22.98
+   ]
+  ]
+ },
+ "s06": {
+  "dur": 33.53,
+  "how": "snap 12/18",
+  "clauses": [
+   [
+    "Layer one is twenty-six deterministic signatures,",
+    0.04
+   ],
+   [
+    "covering S Q L injection,",
+    3.36
+   ],
+   [
+    "cross-site scripting,",
+    5.38
+   ],
+   [
+    "path traversal,",
+    6.81
+   ],
+   [
+    "command injection,",
+    7.91
+   ],
+   [
+    "server-side request forgery,",
+    8.38
+   ],
+   [
+    "scanner probes,",
+    10.19
+   ],
+   [
+    "and deserialization.",
+    11.24
+   ],
+   [
+    "Every rule is either block,",
+    12.76
+   ],
+   [
+    "or flag.",
+    13.81
+   ],
+   [
+    "A pattern only earns block if a legitimate client would essentially never send it,",
+    15.33
+   ],
+   [
+    "like union select.",
+    20.6
+   ],
+   [
+    "Weaker patterns become flags:",
+    22.35
+   ],
+   [
+    "evidence for the model,",
+    23.55
+   ],
+   [
+    "not an instant four oh three.",
+    24.44
+   ],
+   [
+    "And rules match structure,",
+    27.85
+   ],
+   [
+    "not single characters,",
+    29.38
+   ],
+   [
+    "so a customer named O'Brien goes straight through.",
+    30.87
+   ]
+  ]
+ },
+ "s07": {
+  "dur": 24.171,
+  "how": "exact",
+  "clauses": [
+   [
+    "The other half of layer one is rate limiting,",
+    0.06
+   ],
+   [
+    "backed by Reddis sorted sets.",
+    2.53
+   ],
+   [
+    "Each client gets a sixty-second sliding window of two hundred and forty requests,",
+    4.79
+   ],
+   [
+    "and a five-second burst window of forty.",
+    9.36
+   ],
+   [
+    "A Hyper Log Log counts how many distinct endpoints a client touches,",
+    12.08
+   ],
+   [
+    "in constant memory,",
+    16.06
+   ],
+   [
+    "which is the fingerprint of scanning and enumeration.",
+    17.4
+   ],
+   [
+    "All three counters update in a single,",
+    20.59
+   ],
+   [
+    "pipelined round trip.",
+    22.96
+   ]
+  ]
+ },
+ "s08": {
+  "dur": 14.976,
+  "how": "exact",
+  "clauses": [
+   [
+    "A block hit,",
+    0.03
+   ],
+   [
+    "or a rate breach,",
+    2.18
+   ],
+   [
+    "ends the request right there,",
+    3.97
+   ],
+   [
+    "with a four oh three.",
+    5.67
+   ],
+   [
+    "Sending a confirmed union select to a statistical model to ask its opinion would only add latency,",
+    10.25
+   ],
+   [
+    "and a chance of being wrong about something already certain.",
+    12.13
+   ]
+  ]
+ },
+ "s09": {
+  "dur": 37.967,
+  "how": "snap 18/21",
+  "clauses": [
+   [
+    "Everything that survives layer one becomes a vector of thirty-four behavioural features:",
+    0.04
+   ],
+   [
+    "the shape of the body,",
+    4.93
+   ],
+   [
+    "the path,",
+    6.72
+   ],
+   [
+    "and the query.",
+    7.02
+   ],
+   [
+    "Their length,",
+    7.95
+   ],
+   [
+    "depth,",
+    8.72
+   ],
+   [
+    "entropy,",
+    9.26
+   ],
+   [
+    "and special characters,",
+    9.91
+   ],
+   [
+    "and how much decoding changed them.",
+    11.24
+   ],
+   [
+    "Plus endpoint breadth,",
+    13.57
+   ],
+   [
+    "the H T T P method,",
+    14.96
+   ],
+   [
+    "and the number of flag hits.",
+    16.66
+   ],
+   [
+    "Just as important is what is missing.",
+    18.31
+   ],
+   [
+    "There is no endpoint identity,",
+    20.6
+   ],
+   [
+    "so the model learns what a request looks like,",
+    22.5
+   ],
+   [
+    "not where it went.",
+    25.05
+   ],
+   [
+    "That is what lets it sit in front of a different backend.",
+    26.45
+   ],
+   [
+    "And there are no client headers,",
+    29.67
+   ],
+   [
+    "like the user agent.",
+    31.1
+   ],
+   [
+    "An attacker copies those for free,",
+    32.87
+   ],
+   [
+    "and they were the single biggest source of false positives.",
+    35.1
+   ]
+  ]
+ },
+ "s10": {
+  "dur": 26.709,
+  "how": "snap 12/14",
+  "clauses": [
+   [
+    "Layers two and three are unsupervised.",
+    0.04
+   ],
+   [
+    "They are trained only on normal traffic,",
+    2.39
+   ],
+   [
+    "so they never need attack labels.",
+    4.27
+   ],
+   [
+    "The Isolation Forest,",
+    6.36
+   ],
+   [
+    "three hundred trees,",
+    7.63
+   ],
+   [
+    "measures how easily a request can be isolated from the crowd.",
+    8.77
+   ],
+   [
+    "The autoencoder,",
+    12.18
+   ],
+   [
+    "written in pure Num Pie,",
+    13.4
+   ],
+   [
+    "with no Pie Torch,",
+    14.79
+   ],
+   [
+    "squeezes the thirty-four features through a narrow bottleneck,",
+    15.9
+   ],
+   [
+    "and tries to rebuild them.",
+    19.02
+   ],
+   [
+    "Normal traffic reconstructs cleanly.",
+    20.73
+   ],
+   [
+    "Anomalies do not,",
+    23.26
+   ],
+   [
+    "and the reconstruction error becomes a score.",
+    24.54
+   ]
+  ]
+ },
+ "s11": {
+  "dur": 23.936,
+  "how": "snap 9/10",
+  "clauses": [
+   [
+    "Layer four makes the call.",
+    0.05
+   ],
+   [
+    "A gradient-boosted meta-learner takes exactly three inputs:",
+    1.96
+   ],
+   [
+    "the rate score from layer one,",
+    5.62
+   ],
+   [
+    "the forest score,",
+    7.27
+   ],
+   [
+    "and the autoencoder score.",
+    8.51
+   ],
+   [
+    "It returns one probability.",
+    10.09
+   ],
+   [
+    "Above the threshold of zero point four three,",
+    12.23
+   ],
+   [
+    "chosen on a validation pool under a one percent false-positive budget,",
+    15.0
+   ],
+   [
+    "the request is judged hostile.",
+    19.4
+   ],
+   [
+    "This is the only component that decides.",
+    21.66
+   ]
+  ]
+ },
+ "s12": {
+  "dur": 22.613,
+  "how": "snap 8/8",
+  "clauses": [
+   [
+    "The gateway and the trainer import the same feature code,",
+    0.04
+   ],
+   [
+    "so serving can never drift from training,",
+    3.04
+   ],
+   [
+    "and the gateway refuses to load a model whose feature contract does not match.",
+    5.39
+   ],
+   [
+    "The event log stores a numeric feature vector and a hashed client I D,",
+    9.9
+   ],
+   [
+    "never a raw request body.",
+    14.35
+   ],
+   [
+    "Inference errors fail closed.",
+    16.49
+   ],
+   [
+    "Bodies are capped at one mebibyte,",
+    18.67
+   ],
+   [
+    "and the containers run as non-root.",
+    20.62
+   ]
+  ]
+ },
+ "s13": {
+  "dur": 19.989,
+  "how": "snap 9/14",
+  "clauses": [
+   [
+    "Now,",
+    0.04
+   ],
+   [
+    "let's see it running.",
+    0.42
+   ],
+   [
+    "This is the security console:",
+    1.83
+   ],
+   [
+    "eight pages,",
+    3.85
+   ],
+   [
+    "built with React,",
+    4.47
+   ],
+   [
+    "TypeScript,",
+    5.56
+   ],
+   [
+    "and Re-charts,",
+    6.33
+   ],
+   [
+    "reading live from the gateway's health and stats endpoints,",
+    7.59
+   ],
+   [
+    "and its event log.",
+    10.64
+   ],
+   [
+    "Nothing on screen is simulated.",
+    12.05
+   ],
+   [
+    "The gateway is healthy,",
+    14.31
+   ],
+   [
+    "Reddis is connected,",
+    15.62
+   ],
+   [
+    "the models are loaded,",
+    17.08
+   ],
+   [
+    "and the backend is responding.",
+    18.34
+   ]
+  ]
+ },
+ "s14": {
+  "dur": 23.317,
+  "how": "snap 11/16",
+  "clauses": [
+   [
+    "Let's send some traffic.",
+    0.05
+   ],
+   [
+    "A normal product request goes straight through:",
+    1.61
+   ],
+   [
+    "two hundred,",
+    3.92
+   ],
+   [
+    "OK.",
+    5.51
+   ],
+   [
+    "A S Q L injection is blocked at layer one,",
+    5.84
+   ],
+   [
+    "with the rule and the reason.",
+    8.34
+   ],
+   [
+    "A double-encoded path traversal:",
+    9.88
+   ],
+   [
+    "still blocked.",
+    11.91
+   ],
+   [
+    "A script tag:",
+    13.06
+   ],
+   [
+    "blocked.",
+    14.98
+   ],
+   [
+    "A request for the cloud metadata endpoint,",
+    15.28
+   ],
+   [
+    "the classic S S R F credential grab:",
+    17.24
+   ],
+   [
+    "blocked.",
+    20.1
+   ],
+   [
+    "And the name O'Brien?",
+    20.98
+   ],
+   [
+    "Two hundred,",
+    21.98
+   ],
+   [
+    "OK.",
+    22.82
+   ]
+  ]
+ },
+ "s15": {
+  "dur": 17.109,
+  "how": "snap 8/10",
+  "clauses": [
+   [
+    "In the live feed,",
+    0.04
+   ],
+   [
+    "every request lands with its verdict.",
+    1.13
+   ],
+   [
+    "Green is allowed.",
+    3.44
+   ],
+   [
+    "Red was blocked by a rule.",
+    4.94
+   ],
+   [
+    "Amber is different:",
+    6.93
+   ],
+   [
+    "would block.",
+    8.19
+   ],
+   [
+    "The machine-learning layer judged that request hostile,",
+    9.41
+   ],
+   [
+    "but in the default mode,",
+    12.42
+   ],
+   [
+    "it only records the verdict,",
+    13.33
+   ],
+   [
+    "and forwards the request anyway.",
+    15.36
+   ]
+  ]
+ },
+ "s16": {
+  "dur": 21.163,
+  "how": "exact",
+  "clauses": [
+   [
+    "The threats page keeps enforced rule blocks and machine-learning detections strictly apart.",
+    0.06
+   ],
+   [
+    "And any event can be investigated.",
+    5.51
+   ],
+   [
+    "This path traversal matched two signatures,",
+    7.81
+   ],
+   [
+    "and was blocked in one point two six milliseconds,",
+    10.54
+   ],
+   [
+    "before any model ran.",
+    13.49
+   ],
+   [
+    "The request itself was never stored raw:",
+    15.38
+   ],
+   [
+    "just its features,",
+    17.91
+   ],
+   [
+    "and a pseudonymised client hash.",
+    19.28
+   ]
+  ]
+ },
+ "s17": {
+  "dur": 15.637,
+  "how": "exact",
+  "clauses": [
+   [
+    "M L Intelligence shows the live pipeline and its threshold.",
+    0.04
+   ],
+   [
+    "System Health shows something more important:",
+    4.23
+   ],
+   [
+    "the would-block rate.",
+    6.86
+   ],
+   [
+    "In this demo,",
+    8.32
+   ],
+   [
+    "the model would have blocked far too much legitimate traffic.",
+    9.36
+   ],
+   [
+    "Which brings us to the most honest part of this project.",
+    12.81
+   ]
+  ]
+ },
+ "s18": {
+  "dur": 35.941,
+  "how": "snap 15/18",
+  "clauses": [
+   [
+    "Early on,",
+    0.03
+   ],
+   [
+    "the ensemble scored an F one of zero point nine nine.",
+    0.83
+   ],
+   [
+    "It looked perfect.",
+    4.54
+   ],
+   [
+    "But the test data came from the same traffic generator used for training,",
+    6.02
+   ],
+   [
+    "and that generator always called each endpoint the same way.",
+    10.12
+   ],
+   [
+    "The model had learned how each endpoint is normally called,",
+    14.06
+   ],
+   [
+    "not what an attack is.",
+    17.28
+   ],
+   [
+    "A bare get,",
+    18.82
+   ],
+   [
+    "on the products endpoint,",
+    19.84
+   ],
+   [
+    "scored zero point nine nine:",
+    20.74
+   ],
+   [
+    "attack.",
+    22.91
+   ],
+   [
+    "On traffic from a second,",
+    23.95
+   ],
+   [
+    "independent client,",
+    25.66
+   ],
+   [
+    "it was close to chance,",
+    26.7
+   ],
+   [
+    "with a R O C A U C of zero point five six.",
+    28.15
+   ],
+   [
+    "Finding that,",
+    31.23
+   ],
+   [
+    "and fixing it,",
+    32.24
+   ],
+   [
+    "became the main contribution of this work.",
+    32.98
+   ]
+  ]
+ },
+ "s19": {
+  "dur": 25.259,
+  "how": "snap 8/10",
+  "clauses": [
+   [
+    "The live model,",
+    0.04
+   ],
+   [
+    "models B four,",
+    1.07
+   ],
+   [
+    "was chosen only on independent traffic.",
+    1.9
+   ],
+   [
+    "It cut legitimate requests wrongly flagged,",
+    4.56
+   ],
+   [
+    "from sixty-one point three percent,",
+    7.18
+   ],
+   [
+    "to seventeen.",
+    9.08
+   ],
+   [
+    "R O C A U C rose from zero point five six to zero point eight seven,",
+    10.49
+   ],
+   [
+    "and it still catches ninety-two point eight percent of the attacks that layer one missed.",
+    14.53
+   ],
+   [
+    "Layer one itself wrongly blocked zero,",
+    20.38
+   ],
+   [
+    "of five hundred and eight legitimate requests.",
+    22.93
+   ]
+  ]
+ },
+ "s20": {
+  "dur": 31.653,
+  "how": "snap 11/12",
+  "clauses": [
+   [
+    "Seventeen percent is a long way from the one percent goal,",
+    0.05
+   ],
+   [
+    "so the model does not block by default.",
+    3.51
+   ],
+   [
+    "The gateway runs in enforce L one mode.",
+    6.2
+   ],
+   [
+    "When an operator is ready,",
+    9.36
+   ],
+   [
+    "machine-learning blocking can be switched on per endpoint,",
+    10.26
+   ],
+   [
+    "for a small canary of clients,",
+    14.13
+   ],
+   [
+    "behind an automatic brake.",
+    16.05
+   ],
+   [
+    "If the would-block rate passes five percent,",
+    17.9
+   ],
+   [
+    "the brake turns machine-learning blocking off by itself,",
+    20.67
+   ],
+   [
+    "while layer one keeps blocking.",
+    24.02
+   ],
+   [
+    "And a single client can never trip it alone,",
+    26.13
+   ],
+   [
+    "so an attacker cannot switch the model off with volume.",
+    28.73
+   ]
+  ]
+ },
+ "s21": {
+  "dur": 14.507,
+  "how": "snap 4/4",
+  "clauses": [
+   [
+    "All of it is covered by a suite of one hundred and thirty-seven tests,",
+    0.04
+   ],
+   [
+    "with tooling for ten-seed statistical validation,",
+    4.39
+   ],
+   [
+    "and Mack Nemar comparisons against single-model baselines.",
+    7.64
+   ],
+   [
+    "And a Docker deployment that starts with one command.",
+    11.61
+   ]
+  ]
+ },
+ "s22": {
+  "dur": 4.373,
+  "how": "exact",
+  "clauses": [
+   [
+    "Micro A P I Guard.",
+    0.05
+   ],
+   [
+    "Enforce what is certain.",
+    1.7
+   ],
+   [
+    "Observe what is learned.",
+    3.11
+   ]
+  ]
+ }
+}

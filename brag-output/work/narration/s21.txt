@@ -1,0 +1,1 @@
+All of it is covered by a suite of one hundred and thirty-seven tests, with tooling for ten-seed statistical validation, and Mack Nemar comparisons against single-model baselines. And a Docker deployment that starts with one command.

@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s18-root { position: absolute; inset: 0; }
+        #s18-f1 { position: absolute; left: 0; right: 0; top: 300px; display: flex; flex-direction: column; align-items: center; transform-origin: 50% 0; }
+        #s18-f1 .kicker { color: var(--ok-2); }
+        #s18-f1v { margin-top: 10px; font-size: 230px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--t-hi); }
+        #s18-f1v span { color: var(--ok-2); }
+        #s18-perfect { margin-top: 18px; font-size: 34px; font-weight: 500; color: var(--t-body); }
+        #s18-strike { position: absolute; left: 50%; top: 150px; width: 1000px; height: 8px; margin-left: -500px; transform-origin: 0 50%; background: var(--bad); border-radius: 4px; box-shadow: 0 0 30px rgba(239, 68, 68, 0.7); }
+        #s18-b { position: absolute; left: 140px; right: 140px; top: 400px; height: 560px; }
+        #s18-gen { position: absolute; left: 0; top: 40px; width: 380px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+        #s18-gen b { font-size: 30px; }
+        #s18-gen em { font-style: normal; font-family: var(--mono); font-size: 18px; color: var(--t-muted); }
+        .s18-pool { position: absolute; left: 560px; width: 240px; height: 90px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; }
+        #s18-tr { top: 0; }
+        #s18-te { top: 130px; }
+        .s18-w { position: absolute; left: 385px; width: 170px; height: 2px; background: rgba(96, 165, 250, 0.6); transform-origin: 0 50%; }
+        #s18-w1 { top: 80px; transform: rotate(-12deg); }
+        #s18-w2 { top: 140px; transform: rotate(12deg); }
+        #s18-same { position: absolute; left: 860px; top: 0; width: 780px; }
+        #s18-same .row { font-family: var(--mono); font-size: 25px; color: var(--t-body); padding: 10px 16px; margin-bottom: 8px; border-radius: 8px; background: rgba(22, 35, 58, 0.6); }
+        #s18-learn { position: absolute; left: 0; top: 290px; width: 1640px; display: flex; gap: 30px; }
+        #s18-learn .panel { flex: 1; padding: 28px 34px; font-size: 32px; font-weight: 700; }
+        #s18-l1 { color: var(--warn-2); }
+        #s18-l2 { color: var(--bad-2); }
+        #s18-l2 s { text-decoration-thickness: 3px; }
+        #s18-c { position: absolute; left: 140px; right: 140px; top: 380px; }
+        .s18-q { display: flex; align-items: center; gap: 28px; padding: 26px 36px; margin-bottom: 22px; }
+        .s18-q code { flex: 1; font-family: var(--mono); font-size: 36px; color: var(--t-hi); }
+        .s18-q .sc { font-family: var(--mono); font-size: 46px; font-weight: 700; }
+        #s18-q1 .sc { color: var(--bad-2); }
+        #s18-q2 .sc { color: var(--ok-2); }
+        #s18-src { margin-top: 6px; font-family: var(--mono); font-size: 19px; color: var(--t-muted); }
+        #s18-d { position: absolute; left: 140px; right: 140px; top: 330px; height: 620px; }
+        #s18-ind { position: absolute; left: 0; top: 40px; width: 560px; padding: 34px 38px; }
+        #s18-ind b { font-size: 34px; }
+        #s18-ind .small { margin-top: 10px; }
+        #s18-auc { position: absolute; left: 700px; top: 0; width: 940px; text-align: center; }
+        #s18-aucv { font-size: 210px; font-weight: 800; letter-spacing: -0.05em; color: var(--bad-2); line-height: 1; }
+        #s18-aucl { font-family: var(--mono); font-size: 26px; color: var(--t-body); }
+        #s18-scale { position: relative; margin: 34px auto 0; width: 760px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #2b4268, #3b82f6); }
+        #s18-coin { position: absolute; left: 0; top: -14px; width: 3px; height: 38px; background: #fff; }
+        #s18-coinl { position: absolute; left: -60px; top: 34px; width: 120px; text-align: center; font-family: var(--mono); font-size: 18px; color: var(--t-muted); }
+        #s18-mark { position: absolute; left: 91px; top: -11px; width: 32px; height: 32px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 24px rgba(239, 68, 68, 0.9); }
+        #s18-sl { position: absolute; left: 0; right: 0; top: 34px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 18px; color: var(--t-muted); }
+        #s18-main { position: absolute; left: 0; right: 0; top: 470px; text-align: center; font-size: 46px; font-weight: 800; letter-spacing: -0.02em; color: var(--t-hi); }
+        #s18-main span { color: var(--accent-2); }
+      </style>
+      <div id="s18-root" data-composition-id="s18" data-width="1920" data-height="1080">
+        <div class="scene" id="s18-scene">
+          <div id="s18-f1">
+            <div class="kicker">held-out test set · same traffic generator</div>
+            <div id="s18-f1v">F1 <span>0.991</span></div>
+            <div id="s18-perfect">It looked perfect.</div>
+            <div id="s18-strike"></div>
+          </div>
+          <div id="s18-b">
+            <div class="panel" id="s18-gen"><b>traffic generator</b><em>generate.py</em></div>
+            <div class="s18-w" id="s18-w1"></div><div class="s18-w" id="s18-w2"></div>
+            <div class="panel s18-pool" id="s18-tr">train</div>
+            <div class="panel s18-pool" id="s18-te">test</div>
+            <div id="s18-same">
+              <div class="row">GET /api/products?page=2&amp;limit=20</div>
+              <div class="row">GET /api/products?page=2&amp;limit=20</div>
+              <div class="row">GET /api/products?page=2&amp;limit=20</div>
+            </div>
+            <div id="s18-learn">
+              <div class="panel" id="s18-l1">learned: how each endpoint is normally called</div>
+              <div class="panel" id="s18-l2"><s>what an attack is</s></div>
+            </div>
+          </div>
+          <div id="s18-c">
+            <div class="panel s18-q" id="s18-q1"><code>GET /api/products</code><span class="sc">0.99</span><span class="pill bad">attack</span></div>
+            <div class="panel s18-q" id="s18-q2"><code>GET /api/products?page=2&amp;limit=20</code><span class="sc">0.0003</span><span class="pill ok">normal</span></div>
+            <div id="s18-src">the previous model's score for two ordinary requests — HANDOVER.md</div>
+          </div>
+          <div id="s18-d">
+            <div class="panel" id="s18-ind"><b>An independent client</b><div class="small">validate_client.py — shares no code with the generator</div></div>
+            <div id="s18-auc">
+              <div id="s18-aucv">0.56</div>
+              <div id="s18-aucl">ROC-AUC on independent traffic</div>
+              <div id="s18-scale"><div id="s18-coin"></div><div id="s18-mark"></div><div id="s18-sl"><span>0.5 = coin flip</span><span>1.0</span></div></div>
+            </div>
+            <div id="s18-main">Finding it — and fixing it — became <span>the main contribution.</span></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.83, 1.63, 5.34, 6.82, 10.92, 14.86, 18.08, 19.62, 20.64, 21.54, 23.71, 24.75, 26.46, 27.5, 28.95, 32.03, 33.04, 33.78];
+          const D = /*DUR*/37.741;
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#s18-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s18-f1", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.0, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s18-perfect", { opacity: 0 }, { opacity: 1, duration: 0.6 }, C[2]);
+          // B: one generator feeds both pools
+          tl.to("#s18-f1", { y: -190, scale: 0.42, duration: 0.9, ease: "power2.inOut" }, C[3] - 0.4);
+          tl.to("#s18-perfect", { opacity: 0, duration: 0.4 }, C[3] - 0.4);
+          tl.fromTo("#s18-gen", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[3]);
+          tl.fromTo("#s18-w1", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[3] + 0.6);
+          tl.fromTo("#s18-w2", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[3] + 0.8);
+          tl.fromTo("#s18-tr", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[3] + 1.0);
+          tl.fromTo("#s18-te", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[3] + 1.3);
+          tl.fromTo("#s18-same .row", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.35 }, C[4]);
+          tl.fromTo("#s18-l1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, C[5]);
+          tl.fromTo("#s18-l2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, C[6]);
+          // C: the two requests
+          tl.to("#s18-b", { opacity: 0, y: -20, duration: 0.5 }, C[7] - 0.5);
+          tl.fromTo("#s18-q1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C[7]);
+          tl.fromTo("#s18-q1 .sc", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C[9]);
+          tl.fromTo("#s18-q1 .pill", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, C[10]);
+          tl.fromTo("#s18-q2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C[10] + 0.4);
+          tl.fromTo("#s18-src", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[10] + 0.8);
+          // D: independent traffic
+          tl.to("#s18-c", { opacity: 0, y: -20, duration: 0.5 }, C[11] - 0.4);
+          tl.fromTo("#s18-ind", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[11]);
+          tl.fromTo("#s18-auc", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[13]);
+          tl.fromTo("#s18-mark", { x: 600 }, { x: 0, duration: 1.4, ease: "power3.inOut" }, C[13] + 0.2);
+          tl.fromTo("#s18-aucv", { scale: 1.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(2)" }, C[14] + 0.3);
+          tl.fromTo("#s18-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, C[14] + 0.5);
+          tl.to("#s18-f1v", { opacity: 0.35, duration: 0.5 }, C[14] + 0.5);
+          tl.fromTo("#s18-main", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[15]);
+          tl.to("#s18-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s18"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

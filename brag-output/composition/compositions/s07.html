@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s07-root { position: absolute; inset: 0; }
+        #s07-head { position: absolute; left: 140px; top: 120px; }
+        #s07-head .h2 { margin-top: 14px; }
+        #s07-row { position: absolute; left: 140px; right: 140px; top: 330px; display: flex; gap: 34px; }
+        .s07-card { flex: 1; height: 430px; padding: 34px 36px; position: relative; }
+        .s07-card .kicker { font-size: 18px; }
+        .s07-big { margin-top: 18px; font-size: 104px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: var(--t-hi); }
+        .s07-unit { margin-top: 8px; font-size: 25px; color: var(--t-body); }
+        .s07-meter { position: absolute; left: 36px; right: 36px; bottom: 44px; height: 70px; border-radius: 10px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(43, 66, 104, 0.7); overflow: hidden; }
+        .s07-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: 0 50%; background: linear-gradient(90deg, rgba(59, 130, 246, 0.25), rgba(96, 165, 250, 0.7)); }
+        .s07-lim { position: absolute; top: -6px; bottom: -6px; right: 0; width: 3px; background: var(--bad-2); }
+        #s07-tags { position: absolute; left: 36px; right: 36px; bottom: 36px; display: flex; flex-wrap: wrap; gap: 10px; }
+        #s07-tags span { font-family: var(--mono); font-size: 17px; padding: 6px 12px; border-radius: 8px; color: var(--accent-3); background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(96, 165, 250, 0.3); }
+        #s07-tags span.sus { color: var(--warn-2); background: rgba(245, 158, 11, 0.1); border-color: rgba(251, 191, 36, 0.35); }
+        #s07-pipe { position: absolute; left: 140px; right: 140px; top: 800px; height: 130px; display: flex; align-items: center; gap: 24px; padding: 0 40px; }
+        #s07-pipe .kicker { font-size: 18px; color: var(--t-muted); width: 210px; }
+        #s07-cmds { flex: 1; display: flex; gap: 12px; flex-wrap: wrap; }
+        #s07-cmds span { font-family: var(--mono); font-size: 20px; padding: 8px 14px; border-radius: 8px; color: var(--t-body); background: rgba(22, 35, 58, 0.8); }
+        #s07-rt { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--ok-2); white-space: nowrap; }
+      </style>
+      <div id="s07-root" data-composition-id="s07" data-width="1920" data-height="1080">
+        <div class="scene" id="s07-scene">
+          <div id="s07-head">
+            <div class="kicker">Layer 1 · src/gateway/ratelimit.py</div>
+            <div class="h2">Rate limits that actually enforce.</div>
+          </div>
+          <div id="s07-row">
+            <div class="panel s07-card" id="s07-k1">
+              <div class="kicker">Sliding window · sorted set</div>
+              <div class="s07-big" id="s07-n1">0</div>
+              <div class="s07-unit">requests / 60 s / client</div>
+              <div class="s07-meter"><div class="s07-fill" id="s07-f1"></div><div class="s07-lim"></div></div>
+            </div>
+            <div class="panel s07-card" id="s07-k2">
+              <div class="kicker">Burst window · sorted set</div>
+              <div class="s07-big" id="s07-n2">0</div>
+              <div class="s07-unit">requests / 5 s / client</div>
+              <div class="s07-meter"><div class="s07-fill" id="s07-f2"></div><div class="s07-lim"></div></div>
+            </div>
+            <div class="panel s07-card" id="s07-k3">
+              <div class="kicker">Endpoint breadth · HyperLogLog</div>
+              <div class="s07-big" id="s07-n3">0</div>
+              <div class="s07-unit">distinct endpoints · O(1) memory</div>
+              <div id="s07-tags"><span>/api/products</span><span>/api/users/{id}</span><span>/api/orders</span><span class="sus">/.env</span><span class="sus">/.git/config</span><span class="sus">/wp-admin</span><span class="sus">/phpmyadmin</span></div>
+            </div>
+          </div>
+          <div class="panel" id="s07-pipe">
+            <div class="kicker">one Redis pipeline</div>
+            <div id="s07-cmds"><span>ZADD</span><span>ZREMRANGEBYSCORE</span><span>ZCARD</span><span>ZADD</span><span>ZREMRANGEBYSCORE</span><span>ZCARD</span><span>PFADD</span><span>PFCOUNT</span></div>
+            <div id="s07-rt">→ 1 round trip</div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.56, 3.03, 5.29, 9.86, 12.58, 16.56, 17.9, 21.09, 23.46];
+          const D = /*DUR*/25.671;
+          const tl = gsap.timeline({ paused: true });
+          const count = (el, to, at, dur) => {
+            const o = { v: 0 }, node = document.getElementById(el);
+            tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => (node.textContent = Math.round(o.v)) }, at);
+          };
+          tl.fromTo("#s07-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s07-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s07-k1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s07-k2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[1] + 0.25);
+          tl.fromTo("#s07-k3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[1] + 0.5);
+          count("s07-n1", 240, C[2], 1.6);
+          tl.fromTo("#s07-f1", { scaleX: 0 }, { scaleX: 0.62, duration: 2.4, ease: "power1.inOut" }, C[2]);
+          count("s07-n2", 40, C[3], 1.0);
+          tl.fromTo("#s07-f2", { scaleX: 0 }, { scaleX: 0.3, duration: 0.6, ease: "power2.out" }, C[3]);
+          tl.to("#s07-f2", { scaleX: 0.92, duration: 0.5, ease: "power2.in" }, C[3] + 0.9);
+          tl.to("#s07-f2", { scaleX: 0.4, duration: 1.2, ease: "power2.out" }, C[3] + 1.6);
+          count("s07-n3", 7, C[4] + 0.4, 2.4);
+          tl.fromTo("#s07-tags span", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.32 }, C[4] + 0.4);
+          tl.to("#s07-tags span.sus", { boxShadow: "0 0 16px rgba(245,158,11,0.5)", duration: 0.4 }, C[6]);
+          tl.fromTo("#s07-pipe", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[7] - 0.3);
+          tl.fromTo("#s07-cmds span", { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.1 }, C[7]);
+          tl.fromTo("#s07-rt", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.5 }, C[8]);
+          tl.to("#s07-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s07"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

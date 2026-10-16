@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s17-root { position: absolute; inset: 0; }
+        #s17-frame { left: 240px; top: 110px; width: 1440px; }
+        #s17-frame .view { height: 810px; }
+        .s17-canvas { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+        .s17-canvas img { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+        .s17-hl { position: absolute; border: 4px solid var(--accent-2); border-radius: 14px; box-shadow: 0 0 40px rgba(96, 165, 250, 0.5); }
+        .s17-hl.warn { border-color: var(--warn-2); box-shadow: 0 0 40px rgba(251, 191, 36, 0.5); }
+        #s17-caps { position: absolute; left: 240px; right: 240px; top: 978px; height: 44px; }
+        .s17-cap { position: absolute; left: 0; top: 0; display: flex; gap: 14px; align-items: center; font-size: 23px; font-weight: 600; color: var(--t-body); white-space: nowrap; }
+        .s17-cap .pill { font-size: 20px; padding: 6px 16px; }
+        #s17-dim { position: absolute; inset: 0; background: #000; }
+      </style>
+      <div id="s17-root" data-composition-id="s17" data-width="1920" data-height="1080">
+        <div class="scene" id="s17-scene">
+          <div class="browser" id="s17-frame">
+            <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url" id="s17-url">localhost:5173/#/ml — ML Intelligence</span></div>
+            <div class="view">
+              <div class="s17-canvas" id="s17-ca">
+                <img src="assets/demo/ml-view.png" alt="" />
+                <div class="s17-hl" id="s17-h1" style="left: 659px; top: 97px; width: 410px; height: 135px"></div>
+                <div class="s17-hl" id="s17-h2" style="left: 261px; top: 329px; width: 1386px; height: 740px"></div>
+              </div>
+              <div class="s17-canvas" id="s17-cb">
+                <img src="assets/demo/health-view.png" alt="" />
+                <div class="s17-hl warn" id="s17-h3" style="left: 1072px; top: 440px; width: 440px; height: 58px"></div>
+                <div class="s17-hl" id="s17-h4" style="left: 258px; top: 598px; width: 1220px; height: 26px"></div>
+              </div>
+            </div>
+          </div>
+          <div id="s17-caps">
+            <div class="s17-cap" id="s17-t1"><span class="pill info">threshold 0.4300</span><span>picked on the validation pool under a 1% FPR budget</span></div>
+            <div class="s17-cap" id="s17-t2"><span class="pill warn">live would-block rate 86.8%</span><span>against a brake ceiling of 5%</span></div>
+          </div>
+          <div id="s17-dim"></div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 4.73, 7.36, 8.82, 9.86, 13.31];
+          const D = /*DUR*/17.937;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set(".s17-canvas", { scale: 0.75 });
+          const fade = (id, t, out) => {
+            tl.fromTo(id, { opacity: 0 }, { opacity: 1, duration: 0.4 }, t);
+            if (out) tl.to(id, { opacity: 0, duration: 0.35 }, out);
+          };
+          tl.fromTo("#s17-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s17-frame", { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power3.out" }, 0.1);
+          fade("#s17-h1", C[0] + 1.6, C[1] - 0.2);
+          fade("#s17-h2", C[0] + 2.6, C[1] - 0.2);
+          fade("#s17-t1", C[0] + 1.6, C[1] - 0.2);
+          tl.fromTo("#s17-cb", { opacity: 0 }, { opacity: 1, duration: 0.6 }, C[1]);
+          tl.to("#s17-ca", { opacity: 0, duration: 0.6 }, C[1]);
+          tl.set("#s17-url", { textContent: "localhost:5173/#/health — System Health" }, C[1] + 0.3);
+          tl.fromTo("#s17-cb", { scale: 0.75, x: 0, y: 0 }, { scale: 0.9, x: -180, y: -63, duration: 1.6, ease: "power2.inOut" }, C[2] - 0.6);
+          fade("#s17-h3", C[2] + 0.5);
+          fade("#s17-t2", C[2] + 0.5);
+          fade("#s17-h4", C[3] + 0.3);
+          tl.fromTo("#s17-dim", { opacity: 0 }, { opacity: 0.7, duration: 1.4, ease: "power1.in" }, C[5]);
+          tl.to("#s17-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s17"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+M L Intelligence shows the live pipeline and its threshold. System Health shows something more important: the would-block rate. In this demo, the model would have blocked far too much legitimate traffic. Which brings us to the most honest part of this project.

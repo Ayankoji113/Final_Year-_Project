@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s06-root { position: absolute; inset: 0; }
+        #s06-a { position: absolute; left: 140px; right: 140px; top: 150px; height: 820px; }
+        #s06-big { position: absolute; left: 0; top: 120px; width: 520px; }
+        #s06-num { font-size: 300px; font-weight: 800; letter-spacing: -0.06em; line-height: 0.9; color: var(--t-hi); }
+        #s06-num-l { margin-top: 20px; font-size: 34px; font-weight: 600; color: var(--t-body); }
+        #s06-grid { position: absolute; left: 600px; top: 40px; width: 1040px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .s06-tile { display: flex; align-items: center; justify-content: space-between; padding: 26px 32px; }
+        .s06-tile b { font-size: 30px; font-weight: 700; color: var(--t-hi); }
+        .s06-tile span { font-family: var(--mono); font-size: 22px; color: var(--t-muted); }
+        .s06-tile span em { font-style: normal; font-size: 34px; color: var(--accent-2); font-weight: 700; }
+        #s06-b { position: absolute; left: 140px; right: 140px; top: 150px; height: 820px; }
+        .s06-col { position: absolute; top: 0; width: 790px; padding: 38px 42px; }
+        #s06-cb { left: 0; border-color: rgba(248, 113, 113, 0.55) !important; }
+        #s06-cf { right: 0; border-color: rgba(251, 191, 36, 0.5) !important; }
+        .s06-col .h3 { margin-top: 18px; font-size: 44px; }
+        .s06-col .lead { margin-top: 14px; font-size: 27px; }
+        .s06-rule { margin-top: 18px; padding: 16px 20px; border-radius: 12px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(43, 66, 104, 0.6); }
+        .s06-rule .id { font-family: var(--mono); font-size: 23px; font-weight: 700; }
+        .s06-rule .why { margin-top: 6px; font-size: 21px; color: var(--t-muted); }
+        #s06-cb .id { color: var(--bad-2); }
+        #s06-cf .id { color: var(--warn-2); }
+        #s06-c { position: absolute; left: 140px; right: 140px; top: 660px; }
+        .s06-req { display: flex; align-items: center; gap: 30px; margin-bottom: 18px; padding: 18px 30px; }
+        .s06-req code { flex: 1; font-family: var(--mono); font-size: 30px; color: var(--t-hi); }
+        #s06-cap { position: absolute; left: 140px; right: 140px; top: 600px; font-size: 30px; font-weight: 600; color: var(--t-body); }
+      </style>
+      <div id="s06-root" data-composition-id="s06" data-width="1920" data-height="1080">
+        <div class="scene" id="s06-scene">
+          <div id="s06-a">
+            <div id="s06-big"><div class="kicker">Layer 1 · src/common/rules.py</div><div id="s06-num">0</div><div id="s06-num-l">deterministic signatures</div></div>
+            <div id="s06-grid">
+              <div class="panel s06-tile"><b>SQL injection</b><span><em>8</em> rules</span></div>
+              <div class="panel s06-tile"><b>Cross-site scripting</b><span><em>5</em> rules</span></div>
+              <div class="panel s06-tile"><b>Path traversal</b><span><em>4</em> rules</span></div>
+              <div class="panel s06-tile"><b>Command injection</b><span><em>3</em> rules</span></div>
+              <div class="panel s06-tile"><b>SSRF</b><span><em>1</em> rule</span></div>
+              <div class="panel s06-tile"><b>Scanner probes</b><span><em>3</em> rules</span></div>
+              <div class="panel s06-tile"><b>Deserialization</b><span><em>1</em> rule</span></div>
+              <div class="panel s06-tile"><b>Template injection</b><span><em>1</em> rule</span></div>
+            </div>
+          </div>
+          <div id="s06-b">
+            <div class="panel s06-col" id="s06-cb">
+              <span class="pill bad">BLOCK · 22 rules</span>
+              <div class="h3">Instant 403</div>
+              <div class="lead">Only if a legitimate client would essentially never send it.</div>
+              <div class="s06-rule"><div class="id">sqli.union</div><div class="why">UNION SELECT is never emitted by a legitimate API client</div></div>
+            </div>
+            <div class="panel s06-col" id="s06-cf">
+              <span class="pill warn">FLAG · 4 rules</span>
+              <div class="h3">Evidence for the model</div>
+              <div class="lead">Counted into the n_flags feature the models see.</div>
+              <div class="s06-rule"><div class="id">sqli.comment_terminator · ssti.expr</div><div class="why">scan.admin_panels · scan.config_files</div></div>
+            </div>
+          </div>
+          <div id="s06-cap">Patterns match structure, not single characters.</div>
+          <div id="s06-c">
+            <div class="panel s06-req" id="s06-r1"><code>GET /api/search?q=' OR '1'='1' --</code><span class="pill bad">403 · sqli.tautology</span></div>
+            <div class="panel s06-req" id="s06-r2"><code>GET /api/search?q=O'Brien</code><span class="pill ok">200 OK</span></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 3.86, 5.88, 7.31, 8.41, 8.88, 10.69, 11.74, 13.26, 14.31, 15.83, 21.1, 22.85, 24.05, 24.94, 28.35, 29.88, 31.37];
+          const D = /*DUR*/35.03;
+          const tl = gsap.timeline({ paused: true });
+          const num = document.getElementById("s06-num");
+          const n = { v: 0 };
+          tl.fromTo("#s06-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s06-big", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, C[0]);
+          tl.fromTo(n, { v: 0 }, { v: 26, duration: 1.8, ease: "power2.out", onUpdate: () => (num.textContent = Math.round(n.v)) }, C[0] + 0.2);
+          const tiles = document.querySelectorAll("#s06-grid .s06-tile");
+          const at = [C[1], C[2], C[3], C[4], C[5], C[6], C[7], C[7] + 0.5];
+          tiles.forEach((el, i) => tl.fromTo(el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, at[i]));
+          tl.to("#s06-a", { opacity: 0, y: -20, duration: 0.5, ease: "power2.in" }, C[8] - 0.5);
+          tl.fromTo("#s06-cb", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[8]);
+          tl.fromTo("#s06-cf", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[9]);
+          tl.fromTo("#s06-cb .s06-rule", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, C[11]);
+          tl.fromTo("#s06-cf .s06-rule", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, C[13]);
+          // phase C: structure, not characters
+          tl.to("#s06-b", { y: -50, scale: 0.8, transformOrigin: "50% 0%", opacity: 0.5, duration: 0.7, ease: "power2.inOut" }, C[15] - 0.4);
+          tl.fromTo("#s06-cap", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, C[15]);
+          tl.fromTo("#s06-r1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C[16]);
+          tl.fromTo("#s06-r2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C[17] + 0.2);
+          tl.to("#s06-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s06"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

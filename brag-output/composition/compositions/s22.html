@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s22-root { position: absolute; inset: 0; }
+        #s22-mark { position: absolute; left: 0; right: 0; top: 190px; display: flex; align-items: center; justify-content: center; gap: 24px; }
+        #s22-shield { width: 70px; height: 82px; }
+        #s22-shield path { fill: none; stroke: var(--accent-2); stroke-width: 6; stroke-linejoin: round; }
+        #s22-shield .core { fill: rgba(59, 130, 246, 0.16); stroke: none; }
+        #s22-name { font-size: 60px; font-weight: 800; letter-spacing: -0.04em; color: var(--t-hi); }
+        #s22-name span { color: var(--accent-2); }
+        #s22-lines { position: absolute; left: 0; right: 0; top: 400px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+        .s22-l { font-size: 96px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; }
+        #s22-l1 { color: var(--t-hi); }
+        #s22-l2 { color: var(--ml-2); }
+        #s22-url { position: absolute; left: 0; right: 0; top: 760px; text-align: center; font-family: var(--mono); font-size: 28px; color: var(--t-body); }
+        #s22-sub { position: absolute; left: 0; right: 0; top: 812px; text-align: center; font-size: 22px; color: var(--t-muted); letter-spacing: 0.02em; }
+        #s22-black { position: absolute; inset: 0; background: #000; }
+      </style>
+      <div id="s22-root" data-composition-id="s22" data-width="1920" data-height="1080">
+        <div class="scene" id="s22-scene">
+          <div id="s22-mark">
+            <svg id="s22-shield" viewBox="0 0 120 140">
+              <path class="core" d="M60 8 L108 26 V66 C108 98 88 120 60 132 C32 120 12 98 12 66 V26 Z" />
+              <path d="M60 8 L108 26 V66 C108 98 88 120 60 132 C32 120 12 98 12 66 V26 Z" />
+              <path d="M40 70 L55 85 L82 55" />
+            </svg>
+            <div id="s22-name">MicroAPI <span>Guard</span></div>
+          </div>
+          <div id="s22-lines">
+            <div class="s22-l" id="s22-l1">Enforce what is certain.</div>
+            <div class="s22-l" id="s22-l2">Observe what is learned.</div>
+          </div>
+          <div id="s22-url">github.com/Ayankoji113/Final_Year-_Project</div>
+          <div id="s22-sub">Final Year Project · Real-Time API Anomaly Detection Using a Learned Stacking Ensemble</div>
+          <div id="s22-black"></div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[1.25, 2.9, 4.31];
+          const D = /*DUR*/11.573;
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#s22-black", { opacity: 1 }, { opacity: 0, duration: 0.8 }, 0);
+          tl.fromTo("#s22-mark", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, C[0] - 0.2);
+          tl.fromTo("#s22-l1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[1]);
+          tl.fromTo("#s22-l2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[2]);
+          tl.fromTo("#s22-url", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7 }, C[2] + 1.6);
+          tl.fromTo("#s22-sub", { opacity: 0 }, { opacity: 1, duration: 0.7 }, C[2] + 2.0);
+          tl.to("#s22-black", { opacity: 1, duration: 1.4, ease: "power1.in" }, D - 1.5);
+          window.__timelines["s22"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

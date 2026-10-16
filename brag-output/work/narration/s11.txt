@@ -1,0 +1,1 @@
+Layer four makes the call. A gradient-boosted meta-learner takes exactly three inputs: the rate score from layer one, the forest score, and the autoencoder score. It returns one probability. Above the threshold of zero point four three, chosen on a validation pool under a one percent false-positive budget, the request is judged hostile. This is the only component that decides.

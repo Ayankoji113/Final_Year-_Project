@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #bg-root { position: absolute; inset: 0; background: #000; overflow: hidden; }
+        #bg-root .glow { position: absolute; border-radius: 50%; filter: blur(40px); }
+        #bg-g1 { width: 1400px; height: 1000px; left: -300px; top: -420px;
+          background: radial-gradient(closest-side, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0) 70%); }
+        #bg-g2 { width: 1200px; height: 900px; left: 1050px; top: 500px;
+          background: radial-gradient(closest-side, rgba(129, 140, 248, 0.11), rgba(129, 140, 248, 0) 70%); }
+        #bg-grid { position: absolute; inset: -80px;
+          background-image:
+            linear-gradient(rgba(96, 165, 250, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(96, 165, 250, 0.05) 1px, transparent 1px);
+          background-size: 80px 80px;
+          -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 20%, transparent 75%);
+          mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 20%, transparent 75%); }
+        #bg-vig { position: absolute; inset: 0;
+          background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.85) 100%); }
+      </style>
+      <div id="bg-root" data-composition-id="bg" data-width="1920" data-height="1080">
+        <div id="bg-grid"></div>
+        <div id="bg-g1" class="glow"></div>
+        <div id="bg-g2" class="glow"></div>
+        <div id="bg-vig"></div>
+      </div>
+      <script>
+        (function () {
+          const T = /*TOTAL*/552.213;
+          const tl = gsap.timeline({ paused: true });
+          // Slow, deterministic drift: one sine cycle every 40 s, finite repeats.
+          const cyc = 20;
+          const reps = Math.max(0, Math.floor(T / cyc) - 1);
+          tl.fromTo("#bg-g1", { x: 0, y: 0 }, { x: 260, y: 140, duration: cyc, ease: "sine.inOut", yoyo: true, repeat: reps }, 0);
+          tl.fromTo("#bg-g2", { x: 0, y: 0 }, { x: -320, y: -160, duration: cyc * 1.3, ease: "sine.inOut", yoyo: true, repeat: Math.max(0, Math.floor(T / (cyc * 1.3)) - 1) }, 0);
+          tl.fromTo("#bg-grid", { y: 0 }, { y: 80, duration: 16, ease: "none", repeat: Math.max(0, Math.floor(T / 16) - 1) }, 0);
+          window.__timelines["bg"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

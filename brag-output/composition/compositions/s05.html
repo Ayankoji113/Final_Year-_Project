@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s05-root { position: absolute; inset: 0; }
+        #s05-head { position: absolute; left: 140px; top: 120px; }
+        #s05-head .h2 { margin-top: 14px; }
+        #s05-steps { position: absolute; left: 140px; right: 140px; top: 320px; display: flex; gap: 22px; }
+        .s05-step { flex: 1; padding: 24px 28px; }
+        .s05-step .n { font-family: var(--mono); font-size: 20px; color: var(--accent-2); }
+        .s05-step .t { margin-top: 8px; font-size: 30px; font-weight: 700; color: var(--t-hi); }
+        .s05-step .d { margin-top: 6px; font-size: 21px; color: var(--t-muted); }
+        #s05-demo { position: absolute; left: 140px; right: 140px; top: 520px; height: 430px; padding: 34px 44px; }
+        #s05-demo .kicker { font-size: 18px; color: var(--t-muted); }
+        .s05-line { display: flex; align-items: center; gap: 26px; margin-top: 26px; }
+        .s05-tag { width: 150px; flex: none; font-family: var(--mono); font-size: 19px; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.12em; }
+        .s05-s { font-family: var(--mono); font-size: 36px; color: var(--t-hi); white-space: nowrap; }
+        .s05-s .enc { color: var(--warn-2); }
+        .s05-s .enc2 { color: var(--accent-3); }
+        .s05-s .dd { display: inline-block; color: #fff; background: rgba(239, 68, 68, 0.35); border-radius: 6px; padding: 0 4px; box-shadow: 0 0 22px rgba(239, 68, 68, 0.45); }
+        #s05-badge { position: absolute; right: 44px; bottom: 34px; }
+      </style>
+      <div id="s05-root" data-composition-id="s05" data-width="1920" data-height="1080">
+        <div class="scene" id="s05-scene">
+          <div id="s05-head">
+            <div class="kicker">Before any rule runs</div>
+            <div class="h2">Collapse every encoding to one form.</div>
+          </div>
+          <div id="s05-steps">
+            <div class="panel s05-step"><div class="n">01</div><div class="t">Percent-decode ×4</div><div class="d">until the string stops changing</div></div>
+            <div class="panel s05-step"><div class="n">02</div><div class="t">HTML entities</div><div class="d">&amp;lt;script&amp;gt; → &lt;script&gt;</div></div>
+            <div class="panel s05-step"><div class="n">03</div><div class="t">Unicode NFKC</div><div class="d">fullwidth confusables → ASCII</div></div>
+            <div class="panel s05-step"><div class="n">04</div><div class="t">Strip null bytes</div><div class="d">then whitespace + case fold</div></div>
+          </div>
+          <div class="panel" id="s05-demo">
+            <div class="kicker">double-encoded path traversal</div>
+            <div class="s05-line" id="s05-l0"><div class="s05-tag">raw</div><div class="s05-s">/api/files/<span class="enc">%252e%252e%252f%252e%252e%252f</span>etc<span class="enc">%252f</span>passwd</div></div>
+            <div class="s05-line" id="s05-l1"><div class="s05-tag">round 1</div><div class="s05-s">/api/files/<span class="enc2">%2e%2e%2f%2e%2e%2f</span>etc<span class="enc2">%2f</span>passwd</div></div>
+            <div class="s05-line" id="s05-l2"><div class="s05-tag">round 2</div><div class="s05-s">/api/files/<span class="dd">../../</span>etc/passwd</div></div>
+            <div id="s05-badge" class="pill bad">traversal.dotdot → BLOCK</div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.65, 2.07, 3.23, 5.92, 9.34, 10.9, 13.11, 14.77, 17.85, 21.16, 23.58];
+          const D = /*DUR*/26.069;
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#s05-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s05-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          const stepAt = [C[3], C[4], C[5], C[6]];
+          document.querySelectorAll("#s05-steps .s05-step").forEach((el, i) => {
+            tl.fromTo(el, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, stepAt[i]);
+          });
+          tl.fromTo("#s05-demo", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[7] - 0.3);
+          tl.fromTo("#s05-l0", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.5 }, C[7] + 0.3);
+          tl.fromTo("#s05-l1", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.5 }, C[8] + 1.2);
+          tl.to("#s05-l0", { opacity: 0.45, duration: 0.5 }, C[8] + 1.2);
+          tl.fromTo("#s05-l2", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.5 }, C[9] + 0.6);
+          tl.to("#s05-l1", { opacity: 0.45, duration: 0.5 }, C[9] + 0.6);
+          tl.fromTo("#s05-l2 .dd", { scale: 1.6 }, { scale: 1, duration: 0.5, ease: "back.out(2)" }, C[9] + 0.6);
+          tl.fromTo("#s05-badge", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C[10]);
+          tl.to("#s05-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s05"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

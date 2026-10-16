@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s12-root { position: absolute; inset: 0; }
+        #s12-head { position: absolute; left: 140px; top: 120px; }
+        #s12-head .h2 { margin-top: 14px; }
+        #s12-grid { position: absolute; left: 140px; right: 140px; top: 320px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .s12-card { display: flex; gap: 26px; padding: 30px 34px; min-height: 180px; }
+        .s12-ic { flex: none; width: 54px; height: 54px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(74, 222, 128, 0.5); color: var(--ok-2); font-size: 30px; font-weight: 800; }
+        .s12-card .t { font-size: 32px; font-weight: 700; color: var(--t-hi); }
+        .s12-card .d { margin-top: 8px; font-size: 23px; color: var(--t-body); line-height: 1.4; }
+        .s12-card .d code { font-family: var(--mono); font-size: 21px; color: var(--accent-3); }
+      </style>
+      <div id="s12-root" data-composition-id="s12" data-width="1920" data-height="1080">
+        <div class="scene" id="s12-scene">
+          <div id="s12-head">
+            <div class="kicker">Engineering safeguards</div>
+            <div class="h2">Built to fail safe.</div>
+          </div>
+          <div id="s12-grid">
+            <div class="panel s12-card"><div class="s12-ic">✓</div><div><div class="t">Train / serve symmetry</div><div class="d"><code>src/common/</code> is imported by both the gateway and the trainer — features cannot drift.</div></div></div>
+            <div class="panel s12-card"><div class="s12-ic">✓</div><div><div class="t">Feature contract</div><div class="d"><code>decision.json</code> feature names must match, or the gateway refuses to load the model.</div></div></div>
+            <div class="panel s12-card"><div class="s12-ic">✓</div><div><div class="t">Privacy-preserving log</div><div class="d">Numeric feature vector + hashed client id. Raw request bodies are never written to disk.</div></div></div>
+            <div class="panel s12-card"><div class="s12-ic">✓</div><div><div class="t">Fails closed</div><div class="d">An inference error on attacker-controlled input blocks the request.</div></div></div>
+            <div class="panel s12-card"><div class="s12-ic">✓</div><div><div class="t">Body cap</div><div class="d">1 MiB, enforced while streaming — anything larger gets <code>413</code>.</div></div></div>
+            <div class="panel s12-card"><div class="s12-ic">✓</div><div><div class="t">Hardened containers</div><div class="d">Non-root, <code>no-new-privileges</code>, models mounted read-only.</div></div></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 3.54, 5.89, 10.4, 14.85, 16.99, 19.17, 21.12];
+          const D = /*DUR*/24.913;
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#s12-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s12-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.2);
+          const at = [C[0], C[2], C[3], C[5], C[6], C[7]];
+          document.querySelectorAll("#s12-grid .s12-card").forEach((el, i) => {
+            tl.fromTo(el, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, at[i]);
+            tl.fromTo(el.querySelector(".s12-ic"), { scale: 0.4 }, { scale: 1, duration: 0.45, ease: "back.out(3)" }, at[i] + 0.2);
+          });
+          tl.to("#s12-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s12"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s01-root { position: absolute; inset: 0; }
+        #s01-lines { position: absolute; left: 0; right: 0; top: 190px; display: flex; flex-direction: column; align-items: center; gap: 26px; }
+        #s01-l0 { font-size: 84px; font-weight: 800; letter-spacing: -0.035em; color: var(--t-hi); }
+        #s01-l1 { display: flex; align-items: center; gap: 28px; font-size: 38px; font-weight: 500; color: var(--t-body); }
+        #s01-ok { font-family: var(--mono); font-size: 26px; color: var(--ok-2); padding: 8px 18px; border: 1px solid rgba(74, 222, 128, 0.5); border-radius: 10px; background: rgba(34, 197, 94, 0.08); }
+        #s01-term { position: absolute; left: 260px; width: 1400px; top: 520px; padding: 0; overflow: hidden; }
+        #s01-term .head { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 24px; border-bottom: 1px solid rgba(43, 66, 104, 0.6); }
+        #s01-term .head i { width: 13px; height: 13px; border-radius: 50%; background: #2b4268; display: block; }
+        #s01-term .head span { margin-left: 16px; font-family: var(--mono); font-size: 19px; color: var(--t-muted); }
+        #s01-body { padding: 34px 40px 40px; font-family: var(--mono); font-size: 33px; line-height: 1.5; color: var(--t-hi); min-height: 140px; }
+        #s01-prompt { color: var(--accent-2); }
+        #s01-typed .bad { color: var(--bad-2); }
+        #s01-caret { display: inline-block; width: 16px; height: 36px; background: var(--accent-2); vertical-align: -6px; margin-left: 4px; }
+        #s01-route { margin-top: 18px; display: flex; align-items: center; gap: 18px; font-size: 24px; color: var(--t-muted); }
+        #s01-route .line { width: 520px; height: 2px; background: linear-gradient(90deg, rgba(96, 165, 250, 0.9), rgba(239, 68, 68, 0.9)); transform-origin: 0 50%; }
+        #s01-verdict { position: absolute; left: 50%; top: 600px; width: 1420px; margin-left: -710px; padding: 34px 44px; border-radius: 22px;
+          background: linear-gradient(180deg, rgba(60, 10, 14, 0.96), rgba(26, 6, 10, 0.96)); border: 1px solid rgba(248, 113, 113, 0.65);
+          box-shadow: 0 0 120px rgba(239, 68, 68, 0.28), 0 30px 80px rgba(0, 0, 0, 0.7); }
+        #s01-vtop { display: flex; align-items: baseline; gap: 26px; }
+        #s01-code { font-size: 96px; font-weight: 800; letter-spacing: -0.03em; color: var(--bad-2); line-height: 1; }
+        #s01-vtitle { font-size: 34px; font-weight: 700; color: #fecaca; }
+        #s01-json { margin-top: 22px; font-family: var(--mono); font-size: 24px; line-height: 1.6; color: #fca5a5; }
+        #s01-json b { color: #fee2e2; font-weight: 500; }
+      </style>
+      <div id="s01-root" data-composition-id="s01" data-width="1920" data-height="1080">
+        <div class="scene" id="s01-scene">
+          <div id="s01-lines">
+            <div id="s01-l0">Every API is a door.</div>
+            <div id="s01-l1"><span>Most requests knock politely.</span><span id="s01-ok">GET /api/products/1 → 200 OK</span></div>
+          </div>
+          <div id="s01-term" class="panel">
+            <div class="head"><i></i><i></i><i></i><span>client → localhost:5000</span></div>
+            <div id="s01-body">
+              <div><span id="s01-prompt">$ </span><span id="s01-typed"></span><span id="s01-caret"></span></div>
+              <div id="s01-route"><span>request</span><div class="line" id="s01-line"></div><span>MicroAPI Guard</span></div>
+            </div>
+          </div>
+          <div id="s01-verdict">
+            <div id="s01-vtop"><div id="s01-code">403</div><div id="s01-vtitle">Request blocked by MicroAPI Guard</div></div>
+            <div id="s01-json"><div>"layer": <b>"L1-rules"</b></div><div>"reason": <b>"sqli.union: UNION SELECT is never emitted by a legitimate API client"</b></div><div>"categories": <b>["sqli"]</b></div></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.84, 2.63, 4.58, 6.54, 9.9];
+          const D = /*DUR*/12.512;
+          const tl = gsap.timeline({ paused: true });
+          const ATTACK = "GET /api/search?q=' UNION SELECT password FROM users --";
+          const typed = document.getElementById("s01-typed");
+          const split = ATTACK.indexOf("'");
+          const render = (n) => {
+            const s = ATTACK.slice(0, n);
+            const a = s.slice(0, split), b = s.slice(split);
+            typed.innerHTML = a.replace(/&/g, "&amp;") + (b ? '<span class="bad">' + b.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</span>" : "");
+          };
+          render(0);
+          const typeStart = C[2] + 0.25, typeLen = 3.6;
+          /*TYPE 2 0.25 3.6*/
+          tl.fromTo("#s01-l0", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s01-l1", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[1]);
+          tl.to("#s01-lines", { y: -60, opacity: 0.35, duration: 0.9, ease: "power2.inOut" }, C[2] - 0.2);
+          tl.fromTo("#s01-term", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, C[2] - 0.2);
+          tl.set("#s01-route", { opacity: 0 }, 0);
+          const p = { n: 0 };
+          tl.to(p, { n: ATTACK.length, duration: typeLen, ease: "none", onUpdate: () => render(Math.round(p.n)) }, typeStart);
+          tl.fromTo("#s01-caret", { opacity: 1 }, { opacity: 0, duration: 0.45, ease: "steps(1)", yoyo: true, repeat: Math.max(0, Math.floor((D - 1) / 0.45) - 1) }, 0);
+          tl.to("#s01-route", { opacity: 1, duration: 0.3 }, typeStart + typeLen + 0.2);
+          tl.fromTo("#s01-line", { scaleX: 0 }, { scaleX: 1, duration: C[4] - (typeStart + typeLen + 0.3), ease: "power1.in" }, typeStart + typeLen + 0.3);
+          tl.to("#s01-term", { opacity: 0, y: 30, duration: 0.3 }, C[4] - 0.1);
+          tl.fromTo("#s01-verdict", { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, C[4] - 0.05);
+          tl.to("#s01-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s01"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

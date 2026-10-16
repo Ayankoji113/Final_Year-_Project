@@ -1,0 +1,1 @@
+MicroAPI Guard: an API security gateway with 26 signatures, Redis rate limits, an Isolation Forest, a NumPy autoencoder and a gradient-boosted meta-learner. It enforces what is certain and only observes what is learned. The video also shows how a 0.99 F1 turned out to be near chance on independent traffic, and what we built to fix it.

@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s15-root { position: absolute; inset: 0; }
+        #s15-frame { left: 240px; top: 110px; width: 1440px; }
+        #s15-frame .view { height: 810px; }
+        #s15-canvas { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+        #s15-canvas img, #s15-canvas video { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+        #s15-col { position: absolute; left: 1044px; top: 256px; width: 110px; height: 672px; border: 4px solid var(--accent-2); border-radius: 14px; box-shadow: 0 0 40px rgba(96, 165, 250, 0.5); }
+        #s15-caps { position: absolute; left: 240px; right: 240px; top: 978px; display: flex; gap: 14px; align-items: center; }
+        #s15-caps .pill { font-size: 20px; padding: 6px 16px; }
+        #s15-note { margin-left: auto; font-size: 22px; font-weight: 600; color: var(--warn-2); }
+      </style>
+      <div id="s15-root" data-composition-id="s15" data-width="1920" data-height="1080">
+        <div class="scene" id="s15-scene">
+          <div class="browser" id="s15-frame">
+            <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">localhost:5173/#/live — Live request feed</span></div>
+            <div class="view">
+              <div id="s15-canvas">
+                <img src="assets/demo/live-view.png" alt="" />
+                <video id="s15-vid" src="assets/demo/live-rec.mp4" data-start="0.2" data-duration="18.8" muted playsinline></video>
+                <div id="s15-col"></div>
+              </div>
+            </div>
+          </div>
+          <div id="s15-caps">
+            <span class="pill ok" id="s15-c0">Allowed</span>
+            <span class="pill bad" id="s15-c1">Blocked · L1 rule</span>
+            <span class="pill warn" id="s15-c2">Would block · L4 ML</span>
+            <span id="s15-note">ML verdict recorded — request still forwarded (enforce-l1)</span>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 1.63, 3.94, 5.44, 7.43, 8.69, 9.91, 12.92, 13.83, 15.86];
+          const D = /*DUR*/19.009;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set("#s15-canvas", { scale: 0.75 });
+          tl.fromTo("#s15-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s15-frame", { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power3.out" }, 0.1);
+          tl.fromTo("#s15-col", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[1]);
+          tl.to("#s15-col", { opacity: 0, duration: 0.5 }, C[9] + 1.0);
+          tl.fromTo("#s15-c0", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, C[2]);
+          tl.fromTo("#s15-c1", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, C[3]);
+          tl.fromTo("#s15-c2", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, C[5]);
+          tl.fromTo("#s15-c2", { scale: 1 }, { scale: 1.08, duration: 0.3, yoyo: true, repeat: 1 }, C[5] + 0.4);
+          tl.fromTo("#s15-note", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[7]);
+          tl.to("#s15-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s15"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+In the live feed, every request lands with its verdict. Green is allowed. Red was blocked by a rule. Amber is different: would block. The machine-learning layer judged that request hostile, but in the default mode, it only records the verdict, and forwards the request anyway.

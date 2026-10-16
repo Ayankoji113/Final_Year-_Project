@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s19-root { position: absolute; inset: 0; }
+        #s19-head { position: absolute; left: 140px; top: 120px; }
+        #s19-head .h2 { margin-top: 14px; font-family: var(--mono); font-weight: 700; letter-spacing: -0.02em; }
+        #s19-head .small { margin-top: 8px; }
+        #s19-legend { position: absolute; right: 140px; top: 190px; display: flex; gap: 26px; font-size: 22px; color: var(--t-body); }
+        #s19-legend i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; margin-right: 10px; vertical-align: -2px; }
+        #s19-rows { position: absolute; left: 140px; right: 140px; top: 330px; }
+        .s19-row { display: flex; align-items: center; gap: 30px; height: 112px; padding: 0 36px; margin-bottom: 16px; }
+        .s19-row .lab { width: 520px; font-size: 28px; font-weight: 600; color: var(--t-hi); }
+        .s19-bars { flex: 1; position: relative; height: 64px; }
+        .s19-bar { position: absolute; left: 0; height: 26px; border-radius: 6px; transform-origin: 0 50%; }
+        .s19-bar.old { top: 2px; background: rgba(124, 141, 176, 0.45); }
+        .s19-bar.new { top: 36px; background: linear-gradient(90deg, #3b82f6, #818cf8); }
+        .s19-vals { width: 330px; text-align: right; font-family: var(--mono); font-size: 34px; color: var(--t-hi); white-space: nowrap; }
+        .s19-vals .o { color: var(--t-muted); font-size: 28px; }
+        .s19-vals .n { font-weight: 700; color: var(--accent-2); }
+        #s19-l1 { position: absolute; left: 140px; right: 140px; top: 860px; height: 120px; display: flex; align-items: center; gap: 30px; padding: 0 36px; border-color: rgba(74, 222, 128, 0.5) !important; }
+        #s19-l1 .lab { flex: 1; font-size: 28px; font-weight: 600; color: var(--t-hi); }
+        #s19-l1 .v { font-size: 64px; font-weight: 800; color: var(--ok-2); letter-spacing: -0.03em; }
+        #s19-l1 .u { font-family: var(--mono); font-size: 24px; color: var(--t-body); }
+      </style>
+      <div id="s19-root" data-composition-id="s19" data-width="1920" data-height="1080">
+        <div class="scene" id="s19-scene">
+          <div id="s19-head">
+            <div class="kicker">The live model</div>
+            <div class="h2">models_b4</div>
+            <div class="small">chosen on four independent traffic draws — ml_pipeline/models/MODEL_SELECTION.md</div>
+          </div>
+          <div id="s19-legend"><span><i style="background: rgba(124,141,176,0.6)"></i>previous model</span><span><i style="background: #60a5fa"></i>models_b4</span></div>
+          <div id="s19-rows">
+            <div class="panel s19-row" id="s19-r1"><div class="lab">Legitimate requests wrongly flagged</div><div class="s19-bars"><div class="s19-bar old" style="width: 100%"></div><div class="s19-bar new" style="width: 27.8%"></div></div><div class="s19-vals"><span class="o">61.3% → </span><span class="n" id="s19-v1">61.3%</span></div></div>
+            <div class="panel s19-row" id="s19-r2"><div class="lab">ROC-AUC</div><div class="s19-bars"><div class="s19-bar old" style="width: 56%"></div><div class="s19-bar new" style="width: 87%"></div></div><div class="s19-vals"><span class="o">0.56 → </span><span class="n" id="s19-v2">0.56</span></div></div>
+            <div class="panel s19-row" id="s19-r3"><div class="lab">Attacks caught that Layer 1 missed</div><div class="s19-bars"><div class="s19-bar old" style="width: 100%"></div><div class="s19-bar new" style="width: 92.8%"></div></div><div class="s19-vals"><span class="o">100% → </span><span class="n">92.8%</span></div></div>
+            <div class="panel s19-row" id="s19-r4"><div class="lab">F1</div><div class="s19-bars"><div class="s19-bar old" style="width: 32%"></div><div class="s19-bar new" style="width: 58%"></div></div><div class="s19-vals"><span class="o">0.32 → </span><span class="n">0.58</span></div></div>
+          </div>
+          <div class="panel" id="s19-l1"><div class="lab">Layer 1 · legitimate requests wrongly blocked (independent traffic)</div><div class="v">0</div><div class="u">of 508 · 0.00%</div></div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 1.57, 2.4, 5.06, 7.68, 9.58, 10.99, 15.03, 20.88, 23.43];
+          const D = /*DUR*/26.959;
+          const tl = gsap.timeline({ paused: true });
+          const num = (id, a, b, t, dur, fmt) => {
+            const o = { v: a }, el = document.getElementById(id);
+            tl.fromTo(o, { v: a }, { v: b, duration: dur, ease: "power2.inOut", onUpdate: () => (el.textContent = fmt(o.v)) }, t);
+          };
+          const row = (id, t) => {
+            tl.fromTo(id, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, t);
+            tl.fromTo(id + " .old", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power2.out" }, t + 0.2);
+          };
+          tl.fromTo("#s19-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s19-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s19-legend", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[2]);
+          row("#s19-r1", C[3]);
+          tl.fromTo("#s19-r1 .new", { scaleX: 3.6 }, { scaleX: 1, duration: 1.6, ease: "power3.inOut" }, C[4]);
+          num("s19-v1", 61.3, 17.0, C[4], 1.6, (v) => v.toFixed(1) + "%");
+          row("#s19-r2", C[6] - 0.3);
+          tl.fromTo("#s19-r2 .new", { scaleX: 0.644 }, { scaleX: 1, duration: 1.4, ease: "power3.inOut" }, C[6] + 0.8);
+          num("s19-v2", 0.56, 0.87, C[6] + 0.8, 1.4, (v) => v.toFixed(2));
+          row("#s19-r3", C[7]);
+          tl.fromTo("#s19-r3 .new", { scaleX: 0 }, { scaleX: 1, duration: 1.0, ease: "power2.out" }, C[7] + 0.4);
+          row("#s19-r4", C[7] + 2.2);
+          tl.fromTo("#s19-r4 .new", { scaleX: 0 }, { scaleX: 1, duration: 1.0, ease: "power2.out" }, C[7] + 2.6);
+          tl.fromTo("#s19-l1", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[8]);
+          tl.fromTo("#s19-l1 .v", { scale: 1.6 }, { scale: 1, duration: 0.5, ease: "back.out(2)" }, C[8] + 0.3);
+          tl.to("#s19-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s19"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

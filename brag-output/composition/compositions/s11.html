@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s11-root { position: absolute; inset: 0; }
+        #s11-head { position: absolute; left: 140px; top: 120px; }
+        #s11-head .h2 { margin-top: 14px; }
+        .s11-in { position: absolute; left: 140px; width: 520px; height: 150px; padding: 24px 30px; }
+        #s11-i1 { top: 330px; }
+        #s11-i2 { top: 510px; }
+        #s11-i3 { top: 690px; }
+        .s11-in .nm { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--t-hi); }
+        .s11-in .src { margin-top: 4px; font-size: 20px; color: var(--t-muted); }
+        .s11-bar { position: absolute; left: 30px; right: 30px; bottom: 24px; height: 12px; border-radius: 6px; background: rgba(43, 66, 104, 0.5); overflow: hidden; }
+        .s11-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: 0 50%; display: block; }
+        #s11-i1 .s11-bar i { background: var(--accent-2); }
+        #s11-i2 .s11-bar i, #s11-i3 .s11-bar i { background: var(--ml-2); }
+        .s11-w { position: absolute; left: 664px; height: 2px; width: 196px; background: rgba(129, 140, 248, 0.6); transform-origin: 0 50%; }
+        #s11-w1 { top: 404px; transform: rotate(19deg); }
+        #s11-w2 { top: 584px; }
+        #s11-w3 { top: 764px; transform: rotate(-19deg); }
+        #s11-node { position: absolute; left: 860px; top: 470px; width: 340px; height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border-color: rgba(165, 180, 252, 0.8) !important; box-shadow: 0 0 90px rgba(129, 140, 248, 0.25), 0 30px 80px rgba(0, 0, 0, 0.6) !important; }
+        #s11-node .tag { font-family: var(--mono); font-size: 20px; color: var(--ml-2); letter-spacing: 0.18em; }
+        #s11-node b { font-size: 30px; font-weight: 700; text-align: center; line-height: 1.2; }
+        #s11-wo { position: absolute; left: 1204px; top: 584px; width: 90px; height: 2px; background: rgba(129, 140, 248, 0.6); transform-origin: 0 50%; }
+        #s11-out { position: absolute; left: 1300px; top: 420px; width: 480px; height: 330px; padding: 30px 34px; }
+        #s11-out .kicker { font-size: 18px; }
+        #s11-p { margin-top: 10px; font-size: 110px; font-weight: 800; letter-spacing: -0.04em; color: var(--t-hi); line-height: 1; }
+        #s11-gauge { position: absolute; left: 34px; right: 34px; top: 190px; height: 18px; border-radius: 9px; background: rgba(43, 66, 104, 0.55); }
+        #s11-gfill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 9px; transform-origin: 0 50%; background: linear-gradient(90deg, #22c55e, #f59e0b 45%, #ef4444); }
+        #s11-th { position: absolute; left: 43%; top: -14px; width: 3px; height: 46px; background: #fff; }
+        #s11-thl { position: absolute; left: 34px; right: 34px; top: 236px; font-family: var(--mono); font-size: 19px; color: var(--t-body); }
+        #s11-verdict { position: absolute; left: 34px; bottom: 26px; }
+        #s11-cap { position: absolute; left: 1300px; top: 770px; width: 480px; font-size: 22px; color: var(--t-muted); line-height: 1.4; }
+        #s11-banner { position: absolute; left: 0; right: 0; top: 880px; text-align: center; font-size: 36px; font-weight: 700; color: var(--ml-2); }
+      </style>
+      <div id="s11-root" data-composition-id="s11" data-width="1920" data-height="1080">
+        <div class="scene" id="s11-scene">
+          <div id="s11-head">
+            <div class="kicker">Layer 4 · stacking</div>
+            <div class="h2">Three scores in. One probability out.</div>
+          </div>
+          <div class="panel s11-in" id="s11-i1"><div class="nm">rate</div><div class="src">continuous score from Layer 1</div><div class="s11-bar"><i></i></div></div>
+          <div class="panel s11-in" id="s11-i2"><div class="nm">isolation_forest</div><div class="src">Layer 2, normalised</div><div class="s11-bar"><i></i></div></div>
+          <div class="panel s11-in" id="s11-i3"><div class="nm">autoencoder</div><div class="src">Layer 3, normalised</div><div class="s11-bar"><i></i></div></div>
+          <div class="s11-w" id="s11-w1"></div><div class="s11-w" id="s11-w2"></div><div class="s11-w" id="s11-w3"></div>
+          <div class="panel" id="s11-node"><div class="tag">L4</div><b>HistGradientBoosting meta-learner</b></div>
+          <div id="s11-wo"></div>
+          <div class="panel" id="s11-out">
+            <div class="kicker">p(hostile) · example request</div>
+            <div id="s11-p">0.00</div>
+            <div id="s11-gauge"><div id="s11-gfill"></div><div id="s11-th"></div></div>
+            <div id="s11-thl">threshold 0.43</div>
+            <div id="s11-verdict" class="pill bad">judged hostile</div>
+          </div>
+          <div id="s11-cap">Threshold picked on the validation pool under a 1% false-positive budget.</div>
+          <div id="s11-banner">The only component that decides.</div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.55, 2.46, 6.12, 7.77, 9.01, 10.59, 12.73, 15.5, 19.9, 22.16];
+          const D = /*DUR*/25.436;
+          const tl = gsap.timeline({ paused: true });
+          const pEl = document.getElementById("s11-p");
+          const pv = { v: 0 };
+          tl.fromTo("#s11-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s11-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s11-node", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.6)" }, C[1]);
+          [["#s11-i1", "#s11-w1", 0.18, C[2]], ["#s11-i2", "#s11-w2", 0.64, C[3]], ["#s11-i3", "#s11-w3", 0.82, C[4]]].forEach(([card, wire, v, t]) => {
+            tl.fromTo(card, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, t);
+            tl.fromTo(card + " .s11-bar i", { scaleX: 0 }, { scaleX: v, duration: 0.8, ease: "power2.out" }, t + 0.3);
+            tl.fromTo(wire, { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, t + 0.5);
+          });
+          tl.fromTo("#s11-wo", { scaleX: 0 }, { scaleX: 1, duration: 0.4 }, C[5] - 0.2);
+          tl.fromTo("#s11-out", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[5]);
+          tl.fromTo("#s11-th", { opacity: 0, scaleY: 0 }, { opacity: 1, scaleY: 1, duration: 0.4 }, C[6]);
+          tl.fromTo("#s11-thl", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[6] + 0.2);
+          tl.fromTo("#s11-cap", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[7]);
+          tl.fromTo("#s11-gfill", { scaleX: 0 }, { scaleX: 0.91, duration: 2.6, ease: "power2.inOut" }, C[7] + 1.2);
+          tl.fromTo(pv, { v: 0 }, { v: 0.91, duration: 2.6, ease: "power2.inOut", onUpdate: () => (pEl.textContent = pv.v.toFixed(2)) }, C[7] + 1.2);
+          tl.fromTo("#s11-verdict", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, C[8]);
+          tl.fromTo("#s11-banner", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, C[9]);
+          tl.to("#s11-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s11"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

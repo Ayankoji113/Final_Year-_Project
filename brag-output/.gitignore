@@ -1,0 +1,11 @@
+brag.mp4
+brag_ai_voice.mp4
+brag.new.mp4
+brag.poster.mp4
+composition/.hyperframes/
+work/.venv-xtts/
+work/voice/test/
+work/pipeline.log
+work/render.log
+__pycache__/
+*.tmp.wav

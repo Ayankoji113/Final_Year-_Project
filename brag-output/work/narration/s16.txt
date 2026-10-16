@@ -1,0 +1,1 @@
+The threats page keeps enforced rule blocks and machine-learning detections strictly apart. And any event can be investigated. This path traversal matched two signatures, and was blocked in one point two six milliseconds, before any model ran. The request itself was never stored raw: just its features, and a pseudonymised client hash.

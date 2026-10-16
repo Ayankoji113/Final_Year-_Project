@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s10-root { position: absolute; inset: 0; }
+        #s10-head { position: absolute; left: 140px; top: 120px; right: 140px; }
+        #s10-head .h2 { margin-top: 14px; }
+        #s10-badges { position: absolute; left: 140px; top: 258px; display: flex; gap: 14px; }
+        .s10-panel { position: absolute; top: 330px; width: 800px; height: 640px; padding: 30px 34px; }
+        #s10-p1 { left: 140px; }
+        #s10-p2 { right: 140px; }
+        .s10-panel .h3 { font-size: 36px; }
+        .s10-panel .tag { font-family: var(--mono); font-size: 18px; color: var(--ml-2); letter-spacing: 0.18em; text-transform: uppercase; }
+        #s10-scatter { position: absolute; left: 34px; top: 130px; }
+        #s10-scatter circle { fill: rgba(165, 180, 252, 0.75); }
+        #s10-scatter #s10-out { fill: var(--bad-2); }
+        #s10-scatter line { stroke: var(--warn-2); stroke-width: 2.5; }
+        #s10-scatter rect { fill: rgba(239, 68, 68, 0.1); stroke: var(--bad-2); stroke-width: 2; }
+        .s10-note { position: absolute; left: 34px; bottom: 30px; font-size: 23px; color: var(--t-body); }
+        .s10-note b { color: var(--t-hi); }
+        #s10-net { position: absolute; left: 34px; top: 120px; }
+        #s10-net line { stroke: rgba(129, 140, 248, 0.16); stroke-width: 1; }
+        #s10-net circle { fill: var(--ml-2); }
+        #s10-net text { fill: var(--t-muted); font-family: var(--mono); font-size: 16px; text-anchor: middle; }
+        #s10-neck { fill: rgba(129, 140, 248, 0.18); stroke: var(--ml-2); stroke-width: 2; }
+        #s10-pulse { fill: rgba(147, 197, 253, 0.9); }
+        .s10-rec { position: absolute; left: 34px; right: 34px; height: 70px; display: flex; align-items: center; gap: 18px; }
+        #s10-r1 { top: 412px; }
+        #s10-r2 { top: 490px; }
+        .s10-rec .lab { width: 130px; font-family: var(--mono); font-size: 19px; color: var(--t-muted); }
+        .s10-bars { display: flex; align-items: flex-end; gap: 4px; height: 56px; width: 220px; }
+        .s10-bars i { display: block; width: 14px; border-radius: 3px 3px 0 0; }
+        .s10-in i { background: rgba(165, 180, 252, 0.7); }
+        #s10-r1 .s10-out i { background: var(--ok); }
+        #s10-r2 .s10-out i { background: var(--bad); }
+        .s10-arrow { font-size: 26px; color: var(--t-muted); }
+        .s10-err { margin-left: auto; }
+      </style>
+      <div id="s10-root" data-composition-id="s10" data-width="1920" data-height="1080">
+        <div class="scene" id="s10-scene">
+          <div id="s10-head">
+            <div class="kicker">Layers 2 + 3 · unsupervised</div>
+            <div class="h2">Learn normal. Score the distance from it.</div>
+          </div>
+          <div id="s10-badges"><span class="pill ml" id="s10-b1">trained on normal traffic only</span><span class="pill ml" id="s10-b2">no attack labels</span></div>
+          <div class="panel s10-panel" id="s10-p1">
+            <div class="tag">L2</div>
+            <div class="h3">Isolation Forest · 300 trees</div>
+            <svg id="s10-scatter" width="730" height="400" viewBox="0 0 730 400"></svg>
+            <div class="s10-note" id="s10-n1"><b>Few random splits isolate it</b> → high anomaly score</div>
+          </div>
+          <div class="panel s10-panel" id="s10-p2">
+            <div class="tag">L3</div>
+            <div class="h3">Autoencoder · pure NumPy, no PyTorch</div>
+            <svg id="s10-net" width="730" height="300" viewBox="0 0 730 300"></svg>
+            <div class="s10-rec" id="s10-r1"><div class="lab">normal</div><div class="s10-bars s10-in"></div><div class="s10-arrow">→</div><div class="s10-bars s10-out"></div><span class="pill ok s10-err">low error</span></div>
+            <div class="s10-rec" id="s10-r2"><div class="lab">anomaly</div><div class="s10-bars s10-in"></div><div class="s10-arrow">→</div><div class="s10-bars s10-out"></div><span class="pill bad s10-err">high error</span></div>
+            <div class="s10-note" id="s10-n2"><b>reconstruction error</b> → anomaly score</div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.54, 2.89, 4.77, 6.86, 8.13, 9.27, 12.68, 13.9, 15.29, 16.4, 19.52, 21.23, 23.76, 25.04];
+          const D = /*DUR*/28.209;
+          const tl = gsap.timeline({ paused: true });
+          const NS = "http://www.w3.org/2000/svg";
+          const mk = (parent, tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+          // seeded PRNG so the scatter is identical on every frame and render
+          let seed = 42; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+          const gauss = () => (rnd() + rnd() + rnd() + rnd() - 2) / 2;
+          const sc = document.getElementById("s10-scatter");
+          const pts = [];
+          for (let i = 0; i < 90; i++) pts.push(mk(sc, "circle", { cx: 300 + gauss() * 170, cy: 210 + gauss() * 120, r: 6 }));
+          const l1 = mk(sc, "line", { x1: 560, y1: 0, x2: 560, y2: 400 });
+          const l2 = mk(sc, "line", { x1: 560, y1: 110, x2: 730, y2: 110 });
+          const box = mk(sc, "rect", { x: 566, y: 6, width: 158, height: 98, rx: 10 });
+          const out = mk(sc, "circle", { cx: 650, cy: 55, r: 9, id: "s10-out" });
+          // autoencoder 34 -> 32 -> 16 -> 32 -> 34 (drawn at reduced density)
+          const net = document.getElementById("s10-net");
+          const layers = [[34, 13], [32, 12], [16, 6], [32, 12], [34, 13]];
+          const xs = [60, 210, 365, 520, 670];
+          mk(net, "rect", { id: "s10-neck", x: 335, y: 60, width: 60, height: 170, rx: 14 });
+          const cols = layers.map(([n, k], li) => Array.from({ length: k }, (_, j) => ({ x: xs[li], y: 145 + (j - (k - 1) / 2) * 20 })));
+          for (let li = 0; li < cols.length - 1; li++)
+            cols[li].forEach((a) => cols[li + 1].forEach((b) => mk(net, "line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y })));
+          const nodes = cols.map((c) => c.map((p) => mk(net, "circle", { cx: p.x, cy: p.y, r: 5 })));
+          layers.forEach(([n], li) => { const t = mk(net, "text", { x: xs[li], y: 290 }); t.textContent = n; });
+          const pulse = mk(net, "circle", { id: "s10-pulse", cx: 60, cy: 145, r: 10 });
+          // reconstruction bars
+          const fill = (sel, hs) => { const el = document.querySelector(sel); hs.forEach((h) => { const i = document.createElement("i"); i.style.height = h + "px"; el.appendChild(i); }); };
+          const normal = [30, 44, 22, 50, 36, 28, 40, 18, 46, 32, 26, 38];
+          const anom = [52, 12, 56, 8, 50, 54, 10, 56, 14, 48, 6, 55];
+          fill("#s10-r1 .s10-in", normal); fill("#s10-r1 .s10-out", normal.map((h) => h + ((h * 7) % 5) - 2));
+          fill("#s10-r2 .s10-in", anom); fill("#s10-r2 .s10-out", [30, 34, 28, 32, 36, 30, 33, 29, 31, 35, 30, 32]);
+
+          tl.fromTo("#s10-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s10-head", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, C[0]);
+          tl.fromTo("#s10-b1", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5 }, C[1]);
+          tl.fromTo("#s10-b2", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5 }, C[2]);
+          tl.fromTo("#s10-p1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[3]);
+          tl.fromTo(pts, { opacity: 0, scale: 0, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.4, stagger: 0.012 }, C[3] + 0.2);
+          tl.fromTo(out, { opacity: 0, scale: 0, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(3)" }, C[4]);
+          tl.fromTo(l1, { opacity: 0, attr: { y2: 0 } }, { opacity: 1, attr: { y2: 400 }, duration: 0.5 }, C[5] + 0.3);
+          tl.fromTo(l2, { opacity: 0, attr: { x2: 560 } }, { opacity: 1, attr: { x2: 730 }, duration: 0.5 }, C[5] + 1.0);
+          tl.fromTo(box, { opacity: 0 }, { opacity: 1, duration: 0.4 }, C[5] + 1.6);
+          tl.fromTo("#s10-n1", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[5] + 1.8);
+          tl.fromTo("#s10-p2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C[6]);
+          nodes.forEach((col, i) => tl.fromTo(col, { opacity: 0, scale: 0, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.3, stagger: 0.02 }, C[6] + 0.3 + i * 0.25));
+          tl.fromTo("#s10-net line", { opacity: 0 }, { opacity: 1, duration: 0.8 }, C[7]);
+          tl.fromTo("#s10-neck", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[9]);
+          tl.fromTo("#s10-neck", { scale: 1, transformOrigin: "50% 50%" }, { scale: 1.08, duration: 0.6, yoyo: true, repeat: 1 }, C[9] + 0.5);
+          tl.fromTo(pulse, { opacity: 0, attr: { cx: 60 } }, { opacity: 1, attr: { cx: 60 }, duration: 0.2 }, C[10]);
+          tl.to(pulse, { attr: { cx: 670 }, duration: 1.4, ease: "power1.inOut" }, C[10]);
+          tl.to(pulse, { opacity: 0, duration: 0.3 }, C[10] + 1.4);
+          tl.fromTo("#s10-r1", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, C[11]);
+          tl.fromTo("#s10-r2", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, C[12]);
+          tl.fromTo("#s10-n2", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[13]);
+          tl.to("#s10-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s10"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

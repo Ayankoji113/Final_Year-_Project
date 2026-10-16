@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s02-root { position: absolute; inset: 0; }
+        #s02-hero { position: absolute; left: 0; right: 0; top: 150px; display: flex; flex-direction: column; align-items: center; }
+        #s02-shield { width: 120px; height: 140px; }
+        #s02-shield path { fill: none; stroke: var(--accent-2); stroke-width: 5; stroke-linejoin: round; }
+        #s02-shield .core { fill: rgba(59, 130, 246, 0.16); stroke: none; }
+        #s02-title { margin-top: 26px; font-size: 128px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; color: var(--t-hi); }
+        #s02-title span { color: var(--accent-2); }
+        #s02-sub { margin-top: 24px; font-size: 32px; font-weight: 500; color: var(--t-body); letter-spacing: -0.005em; }
+        #s02-flow { position: absolute; left: 210px; right: 210px; top: 640px; height: 260px; }
+        #s02-flow .node { position: absolute; top: 40px; height: 120px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+        #s02-flow .node b { font-size: 32px; font-weight: 700; color: var(--t-hi); }
+        #s02-flow .node em { font-style: normal; font-family: var(--mono); font-size: 19px; color: var(--t-muted); }
+        #s02-client { left: 0; width: 280px; }
+        #s02-guard { left: 520px; width: 460px; border-color: rgba(96, 165, 250, 0.8) !important; box-shadow: 0 0 80px rgba(59, 130, 246, 0.25), 0 30px 80px rgba(0, 0, 0, 0.6) !important; }
+        #s02-backend { left: 1220px; width: 280px; }
+        #s02-flow .wire { position: absolute; top: 99px; height: 2px; background: rgba(96, 165, 250, 0.55); transform-origin: 0 50%; }
+        #s02-w1 { left: 285px; width: 230px; }
+        #s02-w2 { left: 985px; width: 230px; }
+        #s02-pkt { position: absolute; left: 285px; top: 92px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-3); box-shadow: 0 0 24px rgba(147, 197, 253, 0.9); }
+        #s02-bad { position: absolute; left: 285px; top: 92px; width: 16px; height: 16px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 24px rgba(239, 68, 68, 0.9); }
+        #s02-x { position: absolute; left: 470px; top: 66px; font-size: 56px; font-weight: 800; color: var(--bad-2); }
+        #s02-layers { position: absolute; left: 520px; width: 460px; top: 178px; display: flex; justify-content: space-between; gap: 8px; }
+        #s02-layers span { flex: 1; text-align: center; font-family: var(--mono); font-size: 17px; padding: 8px 0; border-radius: 8px; color: var(--accent-3); background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(96, 165, 250, 0.35); }
+        #s02-layers span.ml { color: var(--ml-2); background: rgba(129, 140, 248, 0.1); border-color: rgba(165, 180, 252, 0.35); }
+        #s02-nochange { position: absolute; left: 1150px; width: 420px; top: 176px; text-align: center; font-size: 22px; color: var(--ok-2); font-weight: 600; }
+      </style>
+      <div id="s02-root" data-composition-id="s02" data-width="1920" data-height="1080">
+        <div class="scene" id="s02-scene">
+          <div id="s02-hero">
+            <svg id="s02-shield" viewBox="0 0 120 140">
+              <path class="core" d="M60 8 L108 26 V66 C108 98 88 120 60 132 C32 120 12 98 12 66 V26 Z" />
+              <path id="s02-sp" d="M60 8 L108 26 V66 C108 98 88 120 60 132 C32 120 12 98 12 66 V26 Z" />
+              <path id="s02-ck" d="M40 70 L55 85 L82 55" />
+            </svg>
+            <div id="s02-title">MicroAPI <span>Guard</span></div>
+            <div id="s02-sub">Real-Time API Anomaly Detection Using a Learned Stacking Ensemble</div>
+          </div>
+          <div id="s02-flow">
+            <div id="s02-client" class="node panel"><b>client</b><em>any HTTP client</em></div>
+            <div id="s02-w1" class="wire"></div>
+            <div id="s02-guard" class="node panel"><b>MicroAPI Guard</b><em>reverse proxy · :5000</em></div>
+            <div id="s02-w2" class="wire"></div>
+            <div id="s02-backend" class="node panel"><b>your backend</b><em>unchanged</em></div>
+            <div id="s02-pkt"></div>
+            <div id="s02-bad"></div>
+            <div id="s02-x">✕</div>
+            <div id="s02-layers"><span>L1 rules</span><span class="ml">L2 forest</span><span class="ml">L3 AE</span><span class="ml">L4 meta</span></div>
+            <div id="s02-nochange">✓ zero changes to the protected service</div>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.56, 2.88, 5.46, 8.01, 10.0, 13.65, 16.05];
+          const D = /*DUR*/20.772;
+          const tl = gsap.timeline({ paused: true });
+          const sp = document.getElementById("s02-sp");
+          const ck = document.getElementById("s02-ck");
+          const L = sp.getTotalLength(), K = ck.getTotalLength();
+          gsap.set(sp, { strokeDasharray: L });
+          gsap.set(ck, { strokeDasharray: K });
+          tl.fromTo(sp, { strokeDashoffset: L }, { strokeDashoffset: 0, duration: 1.2, ease: "power2.inOut" }, C[0] - 0.3);
+          tl.fromTo(ck, { strokeDashoffset: K }, { strokeDashoffset: 0, duration: 0.5, ease: "power2.out" }, C[0] + 0.7);
+          tl.fromTo("#s02-shield .core", { opacity: 0 }, { opacity: 1, duration: 0.8 }, C[0] + 0.5);
+          tl.fromTo("#s02-title", { opacity: 0, y: 36, scale: 1.04 }, { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: "power3.out" }, C[0] + 0.2);
+          tl.fromTo("#s02-sub", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }, C[1]);
+          tl.to("#s02-hero", { y: -40, duration: 1.0, ease: "power2.inOut" }, C[3] - 0.4);
+          // client -> guard -> backend
+          tl.fromTo("#s02-client", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[3]);
+          tl.fromTo("#s02-w1", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[3] + 0.3);
+          tl.fromTo("#s02-guard", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.6)" }, C[3] + 0.5);
+          tl.fromTo("#s02-w2", { scaleX: 0 }, { scaleX: 1, duration: 0.5 }, C[3] + 0.9);
+          tl.fromTo("#s02-backend", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C[3] + 1.1);
+          // a good packet travels all the way through
+          tl.fromTo("#s02-pkt", { opacity: 0 }, { opacity: 1, duration: 0.2 }, C[4] - 0.2);
+          tl.fromTo("#s02-pkt", { x: 0 }, { x: 1000, duration: 2.2, ease: "power1.inOut" }, C[4]);
+          tl.to("#s02-pkt", { opacity: 0, duration: 0.3 }, C[4] + 2.2);
+          tl.fromTo("#s02-layers span", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.35, ease: "power2.out" }, C[4] + 0.4);
+          // a hostile packet stops at the guard
+          tl.fromTo("#s02-bad", { opacity: 0 }, { opacity: 1, duration: 0.2 }, C[5] - 0.1);
+          tl.fromTo("#s02-bad", { x: 0 }, { x: 240, duration: 0.9, ease: "power2.in" }, C[5]);
+          tl.to("#s02-bad", { scale: 2.2, opacity: 0, duration: 0.35 }, C[5] + 0.9);
+          tl.fromTo("#s02-x", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)" }, C[5] + 0.9);
+          tl.fromTo("#s02-nochange", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6 }, C[6] + 0.3);
+          tl.fromTo("#s02-backend", { boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }, { boxShadow: "0 0 60px rgba(34,197,94,0.35)", duration: 0.8 }, C[6] + 0.3);
+          tl.to("#s02-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s02"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

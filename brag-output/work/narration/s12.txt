@@ -1,0 +1,1 @@
+The gateway and the trainer import the same feature code, so serving can never drift from training, and the gateway refuses to load a model whose feature contract does not match. The event log stores a numeric feature vector and a hashed client I D, never a raw request body. Inference errors fail closed. Bodies are capped at one mebibyte, and the containers run as non-root.

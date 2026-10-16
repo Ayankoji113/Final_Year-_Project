@@ -1,0 +1,1 @@
+Every A.P.I. is a door. Most requests knock politely. Some arrive with a crowbar. This one asks the database for every password it holds. It never gets there.

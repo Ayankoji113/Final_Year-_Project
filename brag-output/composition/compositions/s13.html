@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        #s13-root { position: absolute; inset: 0; }
+        #s13-frame { left: 240px; top: 110px; width: 1440px; }
+        #s13-frame .view { height: 810px; }
+        #s13-canvas { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+        #s13-canvas img, #s13-canvas video { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+        .s13-hl { position: absolute; border: 4px solid var(--ok-2); border-radius: 14px; box-shadow: 0 0 40px rgba(74, 222, 128, 0.55); }
+        #s13-caps { position: absolute; left: 240px; right: 240px; top: 978px; display: flex; gap: 14px; align-items: center; }
+        #s13-caps .pill { font-size: 20px; padding: 6px 16px; }
+        #s13-sim { margin-left: auto; font-size: 22px; font-weight: 600; color: var(--t-body); }
+      </style>
+      <div id="s13-root" data-composition-id="s13" data-width="1920" data-height="1080">
+        <div class="scene" id="s13-scene">
+          <div class="browser" id="s13-frame">
+            <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">localhost:5173/#/ — MicroAPI Guard · Security Console</span></div>
+            <div class="view">
+              <div id="s13-canvas">
+                <img src="assets/demo/overview-view.png" alt="" />
+                <video id="s13-vid" src="assets/demo/overview-rec.mp4" data-start="0.8" data-duration="16" muted playsinline></video>
+                <div class="s13-hl" style="left: 244px; top: 97px; width: 410px; height: 131px"></div>
+                <div class="s13-hl" style="left: 659px; top: 97px; width: 410px; height: 131px"></div>
+                <div class="s13-hl" style="left: 1074px; top: 97px; width: 410px; height: 131px"></div>
+                <div class="s13-hl" style="left: 1489px; top: 97px; width: 410px; height: 131px"></div>
+              </div>
+            </div>
+          </div>
+          <div id="s13-caps">
+            <span class="pill info" id="s13-c0">8 pages</span>
+            <span class="pill info" id="s13-c1">React</span>
+            <span class="pill info" id="s13-c2">TypeScript</span>
+            <span class="pill info" id="s13-c3">Recharts</span>
+            <span class="pill ml" id="s13-c4">live: /__guard API + events.jsonl</span>
+            <span id="s13-sim">Nothing on screen is simulated.</span>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const C = /*CUES*/[0.84, 1.22, 2.63, 4.65, 5.27, 6.36, 7.13, 8.39, 11.44, 12.85, 15.11, 16.42, 17.88, 19.14];
+          const D = /*DUR*/22.189;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set("#s13-canvas", { scale: 0.75 });
+          tl.fromTo("#s13-scene", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
+          tl.fromTo("#s13-frame", { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power3.out" }, 0.1);
+          const at = [C[3], C[4], C[5], C[6], C[7] + 0.4];
+          at.forEach((t, i) => tl.fromTo("#s13-c" + i, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, t));
+          tl.fromTo("#s13-sim", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C[9]);
+          const hls = document.querySelectorAll("#s13-canvas .s13-hl");
+          [C[10], C[11], C[12], C[13]].forEach((t, i) => {
+            tl.fromTo(hls[i], { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power2.out" }, t);
+          });
+          tl.to("#s13-scene", { opacity: 0, duration: 0.5, ease: "power2.in" }, D - 0.5);
+          window.__timelines["s13"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>
